@@ -1573,8 +1573,10 @@ async function refreshToken() {
             const vehicleMap = {};
             userVehicles.forEach(v => vehicleMap[v.VehicleId] = `${v.Make} ${v.Model}`);
             
-            // Group by month and vehicle
+            // Group by month and vehicle - calculate total distance and fuel for each month
             const monthlyData = {};
+            
+            // First, group entries by month and vehicle
             entries.forEach(entry => {
                 const date = new Date(entry.EntryDate);
                 const monthYear = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
@@ -1588,31 +1590,48 @@ async function refreshToken() {
                     };
                 }
                 
-                // Find the next entry to calculate distance
-                const nextEntry = entries.find(e => 
-                    e.VehicleId === entry.VehicleId && 
-                    new Date(e.EntryDate) > date
-                );
-                
-                if (nextEntry) {
-                    const distance = nextEntry.Odometer - entry.Odometer;
-                    monthlyData[monthYear].totalDistance += distance;
-                    
-                    if (!monthlyData[monthYear].vehicles[entry.VehicleId]) {
-                        monthlyData[monthYear].vehicles[entry.VehicleId] = {
-                            liters: 0,
-                            cost: 0,
-                            distance: 0
-                        };
-                    }
-                    
-                    monthlyData[monthYear].vehicles[entry.VehicleId].liters += entry.Liters;
-                    monthlyData[monthYear].vehicles[entry.VehicleId].cost += entry.TotalCost;
-                    monthlyData[monthYear].vehicles[entry.VehicleId].distance += distance;
-                }
-                
                 monthlyData[monthYear].totalLiters += entry.Liters;
                 monthlyData[monthYear].totalCost += entry.TotalCost;
+                
+                if (!monthlyData[monthYear].vehicles[entry.VehicleId]) {
+                    monthlyData[monthYear].vehicles[entry.VehicleId] = {
+                        entries: [],
+                        liters: 0,
+                        cost: 0,
+                        minOdometer: null,
+                        maxOdometer: null
+                    };
+                }
+                
+                monthlyData[monthYear].vehicles[entry.VehicleId].entries.push(entry);
+                monthlyData[monthYear].vehicles[entry.VehicleId].liters += entry.Liters;
+                monthlyData[monthYear].vehicles[entry.VehicleId].cost += entry.TotalCost;
+                
+                // Track min and max odometer readings for each vehicle per month
+                const vehicleData = monthlyData[monthYear].vehicles[entry.VehicleId];
+                if (vehicleData.minOdometer === null || entry.Odometer < vehicleData.minOdometer) {
+                    vehicleData.minOdometer = entry.Odometer;
+                }
+                if (vehicleData.maxOdometer === null || entry.Odometer > vehicleData.maxOdometer) {
+                    vehicleData.maxOdometer = entry.Odometer;
+                }
+            });
+            
+            // Now calculate total distance for each month
+            Object.keys(monthlyData).forEach(monthYear => {
+                const month = monthlyData[monthYear];
+                let monthTotalDistance = 0;
+                
+                Object.keys(month.vehicles).forEach(vehicleId => {
+                    const vehicleData = month.vehicles[vehicleId];
+                    const distance = vehicleData.maxOdometer - vehicleData.minOdometer;
+                    if (distance > 0) {
+                        monthTotalDistance += distance;
+                        vehicleData.distance = distance;
+                    }
+                });
+                
+                month.totalDistance = monthTotalDistance;
             });
             
             // Prepare data for charts
