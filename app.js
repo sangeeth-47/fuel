@@ -2138,9 +2138,6 @@ function renderUserVehicles() {
             <div class="vehicle-odometer">Odometer: ${vehicle.CurrentOdometer.toFixed(1)} km</div>
             <div class="vehicle-fuel-type">Fuel: ${vehicle.FuelType || '--'}</div>
             <div class="vehicle-actions">
-                <button class="btn-secondary btn-edit-vehicle" data-id="${vehicle.VehicleId}">
-                    <i class="fas fa-edit"></i> Edit
-                </button>
                 <button class="btn-secondary btn-delete-vehicle" data-id="${vehicle.VehicleId}">
                     <i class="fas fa-trash"></i> Delete
                 </button>
@@ -2150,14 +2147,7 @@ function renderUserVehicles() {
         vehiclesList.appendChild(card);
     });
 
-    // Add event listeners for edit/delete buttons
-    document.querySelectorAll('.btn-edit-vehicle').forEach(btn => {
-        btn.addEventListener('click', function() {
-            const vehicleId = this.getAttribute('data-id');
-            editVehicle(vehicleId);
-        });
-    });
-    
+    // Add event listeners for delete buttons
     document.querySelectorAll('.btn-delete-vehicle').forEach(btn => {
         btn.addEventListener('click', function() {
             const vehicleId = this.getAttribute('data-id');
@@ -2526,10 +2516,6 @@ function initVehicleModal() {
 
 // Call this when loading the settings page
 document.addEventListener('DOMContentLoaded', initVehicleModal);
-    async function editVehicle(vehicleId) {
-        // In a real app, you would implement this to edit vehicle details
-        showToast('Edit vehicle functionality not implemented in this demo', 'warning');
-    }
     
     async function deleteVehicle(vehicleId) {
         if (!confirm('Are you sure you want to delete this vehicle? All associated fuel entries will also be deleted.')) {

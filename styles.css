@@ -544,9 +544,10 @@ table tr:hover {
 }
 
 /* Reports */
-/* Reports tab header - align title to left */
+/* Reports tab header - align title to left with proper spacing */
 #reports-tab .tab-header h2 {
     text-align: left;
+    margin-right: 2rem;
 }
 
 .report-controls {
@@ -598,6 +599,9 @@ table tr:hover {
     display: flex;
     border-bottom: 1px solid var(--border-color);
     margin-bottom: 1.5rem;
+    max-width: 1200px;
+    margin-left: auto;
+    margin-right: auto;
 }
 
 .settings-tab-btn {
@@ -622,6 +626,8 @@ table tr:hover {
 
 .settings-content.active {
     display: block;
+    max-width: 1200px;
+    margin: 0 auto;
 }
 
 .password-change {
@@ -635,11 +641,67 @@ table tr:hover {
     color: var(--dark-color);
 }
 
+/* Center and constrain settings forms */
+#profile-settings {
+    max-width: 600px;
+    margin: 0 auto;
+    background: white;
+    border-radius: 8px;
+    padding: 2rem;
+    box-shadow: var(--shadow);
+}
+
+#profile-form {
+    max-width: 500px;
+    margin: 0 auto;
+}
+
+#profile-form .btn-primary {
+    width: auto;
+    padding: 0.5rem 1.25rem;
+    font-size: 0.9rem;
+    margin-top: 0.5rem;
+}
+
+.password-change {
+    margin-top: 2rem;
+    padding-top: 2rem;
+    border-top: 1px solid var(--border-color);
+    max-width: 500px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+#password-form .btn-primary {
+    width: auto;
+    padding: 0.5rem 1.25rem;
+    font-size: 0.9rem;
+    margin-top: 0.5rem;
+}
+
+/* Keep vehicles settings full width */
+#vehicles-settings {
+    background: white;
+    border-radius: 8px;
+    padding: 2rem;
+    box-shadow: var(--shadow);
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+#add-vehicle-btn {
+    display: block;
+    width: auto;
+    max-width: 200px;
+    margin: 0 auto 2rem auto;
+}
+
 .vehicles-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
     gap: 1.5rem;
     margin-top: 1.5rem;
+    justify-content: center;
 }
 
 .vehicle-card {
@@ -920,6 +982,52 @@ table tr:hover {
     
     .modal-content {
         margin: 0 1rem;
+    }
+    
+    /* Mobile settings adjustments */
+    .settings-tabs {
+        max-width: 100%;
+        margin: 0 0 1.5rem 0;
+    }
+    
+    .settings-content.active {
+        max-width: 100%;
+        margin: 0;
+    }
+    
+    #profile-settings {
+        max-width: 100%;
+        margin: 0;
+        padding: 1.5rem;
+    }
+    
+    #profile-form {
+        max-width: 100%;
+    }
+    
+    .password-change {
+        max-width: 100%;
+        margin-left: 0;
+        margin-right: 0;
+    }
+    
+    #profile-form .btn-primary,
+    #password-form .btn-primary {
+        width: 100%;
+        padding: 0.75rem;
+        font-size: 1rem;
+        margin-top: 1rem;
+    }
+    
+    #vehicles-settings {
+        padding: 1.5rem;
+        max-width: 100%;
+        margin: 0;
+    }
+    
+    #add-vehicle-btn {
+        max-width: 100%;
+        margin: 0 0 1.5rem 0;
     }
     
     /* Mobile table styles */
