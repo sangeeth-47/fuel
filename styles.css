@@ -108,9 +108,34 @@ body {
     transition: var(--transition);
 }
 
-.form-group input:focus {
+/* Add modern styling for select elements in forms */
+.form-group select {
+    width: 100%;
+    padding: 0.75rem 1rem;
+    border: 2px solid var(--border-color);
+    border-radius: 8px;
+    font-size: 1rem;
+    font-weight: 500;
+    color: var(--dark-color);
+    background-color: white;
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='m6 8 4 4 4-4'/%3e%3c/svg%3e");
+    background-position: right 0.75rem center;
+    background-repeat: no-repeat;
+    background-size: 1rem;
+    appearance: none;
+    cursor: pointer;
+    transition: var(--transition);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.form-group select:hover {
     border-color: var(--primary-color);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.form-group select:focus {
     outline: none;
+    border-color: var(--primary-color);
     box-shadow: 0 0 0 3px rgba(66, 133, 244, 0.2);
 }
 
@@ -233,14 +258,52 @@ body {
 
 .tab-header {
     display: flex;
-    justify-content: space-between;
+    justify-content: center;
     align-items: center;
     margin-bottom: 2rem;
+    position: relative;
 }
 
 .tab-header h2 {
     color: var(--dark-color);
     font-weight: 500;
+    text-align: center;
+}
+
+/* Position vehicle selector to the right when present */
+.tab-header .vehicle-selector {
+    position: absolute;
+    right: 0;
+}
+
+.tab-header .vehicle-selector select {
+    padding: 0.75rem 1rem;
+    border: 2px solid var(--border-color);
+    border-radius: 8px;
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: var(--dark-color);
+    background-color: white;
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='m6 8 4 4 4-4'/%3e%3c/svg%3e");
+    background-position: right 0.75rem center;
+    background-repeat: no-repeat;
+    background-size: 1rem;
+    appearance: none;
+    cursor: pointer;
+    transition: var(--transition);
+    min-width: 200px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.tab-header .vehicle-selector select:hover {
+    border-color: var(--primary-color);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.tab-header .vehicle-selector select:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px rgba(66, 133, 244, 0.2);
 }
 
 /* Dashboard */
@@ -481,10 +544,30 @@ table tr:hover {
 }
 
 /* Reports */
+/* Reports tab header - align title to left */
+#reports-tab .tab-header h2 {
+    text-align: left;
+}
+
 .report-controls {
     display: flex;
     gap: 1rem;
     align-items: center;
+}
+
+/* Custom date range controls styling */
+#custom-range-controls {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+#custom-range-controls span {
+    font-weight: 500;
+    color: var(--gray-color);
+    font-size: 0.9rem;
+    min-width: 20px;
+    text-align: center;
 }
 
 .report-controls select, 
@@ -782,6 +865,26 @@ table tr:hover {
         padding: 1rem;
     }
     
+    /* Mobile dashboard header layout */
+    .tab-header {
+        flex-direction: column;
+        gap: 1rem;
+        align-items: center;
+    }
+    
+    .tab-header .vehicle-selector {
+        position: static;
+        width: 100%;
+        max-width: 300px;
+    }
+    
+    .tab-header .vehicle-selector select {
+        width: 100%;
+        min-width: unset;
+        padding: 0.875rem 1rem;
+        font-size: 1rem;
+    }
+    
     .form-row {
         flex-direction: column;
         gap: 1rem;
@@ -791,6 +894,23 @@ table tr:hover {
         flex-direction: column;
         align-items: flex-start;
         gap: 0.5rem;
+    }
+    
+    /* Mobile custom date range controls */
+    #custom-range-controls {
+        flex-direction: row;
+        width: 100%;
+        justify-content: space-between;
+    }
+    
+    #custom-range-controls input {
+        flex: 1;
+        max-width: calc(50% - 15px);
+    }
+    
+    #custom-range-controls span {
+        flex: 0 0 auto;
+        margin: 0 0.5rem;
     }
     
     .report-controls select, 
