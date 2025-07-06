@@ -1320,7 +1320,7 @@ async function refreshToken() {
         tbody.innerHTML = '';
         
         if (recentEntries.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="5">No entries found</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="6">No entries found</td></tr>';
         } else {                recentEntries.forEach(entry => {
                     const row = document.createElement('tr');
                     row.innerHTML = `
@@ -1329,6 +1329,13 @@ async function refreshToken() {
                         <td>${entry.Liters.toFixed(2)}</td>
                         <td>${entry.PricePerLiter?.toFixed(2) || '--'}</td>
                         <td>${entry.TotalCost.toFixed(2)}</td>
+                        <td>
+                            <button class="btn-delete-entry" 
+                                    onclick="deleteFuelEntry('${entry.EntryId}', '${entry.VehicleId}')"
+                                    title="Delete Entry">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </td>
                     `;
                     tbody.appendChild(row);
                 });
@@ -1371,12 +1378,12 @@ async function refreshToken() {
         }
         
         // Warn about unusually high fuel prices (likely user error)
-        if (pricePerLiter > 10) {
-            const proceed = confirm(`Warning: Price per liter (${pricePerLiter}) seems unusually high. Did you mean ${(pricePerLiter/100).toFixed(2)} instead? Click OK to continue with ${pricePerLiter}, or Cancel to review.`);
-            if (!proceed) {
-                return;
-            }
-        }
+        // if (pricePerLiter > 10) {
+        //     const proceed = confirm(`Warning: Price per liter (${pricePerLiter}) seems unusually high. Did you mean ${(pricePerLiter/100).toFixed(2)} instead? Click OK to continue with ${pricePerLiter}, or Cancel to review.`);
+        //     if (!proceed) {
+        //         return;
+        //     }
+        // }
         
         // Validate the total cost calculation
         const expectedTotal = liters * pricePerLiter;
@@ -1796,6 +1803,13 @@ async function refreshToken() {
                     <td>${entry.PricePerLiter.toFixed(2)}</td>
                     <td>${entry.TotalCost.toFixed(2)}</td>
                     <td>${consumption}</td>
+                    <td>
+                        <button class="btn-delete-entry" 
+                                onclick="deleteFuelEntry('${entry.EntryId}', '${entry.VehicleId}')"
+                                title="Delete Entry">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </td>
                 `;
                 tableBody.appendChild(row);
             });
@@ -1806,6 +1820,83 @@ async function refreshToken() {
         }
     }
     
+    // Delete fuel entry function
+    async function deleteFuelEntry(entryId, vehicleId) {
+        if (!confirm('Are you sure you want to delete this fuel entry? This action cannot be undone.')) {
+            return;
+        }
+        
+        try {
+            showLoading();
+            
+            // Get token from localStorage to ensure it's fresh
+            const token = localStorage.getItem('fuelTrackerToken');
+            const userData = JSON.parse(localStorage.getItem('fuelTrackerUser') || '{}');
+            
+            if (!token || !userData.userId) {
+                showToast('Please log in again', 'error');
+                handleLogout();
+                return;
+            }
+            
+            const response = await fetch(`${apiBaseUrl}/fuelEntries/${entryId}`, {
+                method: 'DELETE',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                }
+            });
+            
+            // Handle unauthorized response
+            if (response.status === 401) {
+                console.log('401 Unauthorized - Token validation failed on server');
+                showToast('Session expired. Please log in again.', 'error');
+                localStorage.removeItem('fuelTrackerToken');
+                localStorage.removeItem('fuelTrackerUser');
+                handleLogout();
+                return;
+            }
+            
+            if (!response.ok) {
+                const errorText = await response.text();
+                throw new Error(`Failed to delete fuel entry: ${errorText}`);
+            }
+            
+            showToast('Fuel entry deleted successfully', 'success');
+            
+            // Refresh the dashboard if we're viewing the same vehicle
+            const dashboardSelect = document.getElementById('dashboard-vehicle-select');
+            if (dashboardSelect && dashboardSelect.value === vehicleId) {
+                await loadVehicleStats(vehicleId);
+            }
+            
+            // Refresh the report if it's currently displayed
+            const reportTable = document.querySelector('#report-table tbody');
+            if (reportTable && reportTable.children.length > 0 && 
+                !reportTable.querySelector('td[colspan]')) {
+                await generateReport();
+            }
+            
+        } catch (error) {
+            showToast(error.message, 'error');
+        } finally {
+            hideLoading();
+        }
+    }
+    
+    // Make deleteFuelEntry available globally for event handlers
+    window.deleteFuelEntry = deleteFuelEntry;
+    
+    // Make supporting functions globally accessible for deleteFuelEntry
+    window.showLoading = showLoading;
+    window.hideLoading = hideLoading;
+    window.showToast = showToast;
+    window.handleLogout = handleLogout;
+    window.loadVehicleStats = loadVehicleStats;
+    window.generateReport = generateReport;
+    window.handleAddVehicle = handleAddVehicle;
+    window.loadUserVehicles = loadUserVehicles;
+
     // Settings functions
     function loadSettings() {
         loadUserVehicles();
@@ -1988,7 +2079,7 @@ async function handleAddVehicle(e) {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'Authorization': `Bearer ${authToken}`  // THIS IS CRUCIAL
+                'Authorization': `Bearer ${authToken}`
             },
             body: JSON.stringify({
                 userId: userData.userId,
@@ -2005,7 +2096,8 @@ async function handleAddVehicle(e) {
         if (response.status === 401) {
             localStorage.removeItem('fuelTrackerToken');
             localStorage.removeItem('fuelTrackerUser');
-            window.location.href = '/login';
+            showToast('Session expired. Please log in again.', 'error');
+            handleLogout();
             return;
         }
 

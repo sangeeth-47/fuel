@@ -837,3 +837,54 @@ table tr:hover {
         color: var(--gray-color);
     }
 }
+
+/* Table action buttons */
+.btn-delete-entry {
+    background-color: var(--danger-color);
+    color: white;
+    border: none;
+    padding: 0.5rem 0.75rem;
+    border-radius: 4px;
+    font-size: 0.875rem;
+    cursor: pointer;
+    transition: var(--transition);
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+.btn-delete-entry:hover {
+    background-color: #d93025;
+    transform: translateY(-1px);
+}
+
+.btn-delete-entry:active {
+    transform: translateY(0);
+}
+
+.btn-delete-entry i {
+    font-size: 0.875rem;
+}
+
+/* Table actions column */
+table td:last-child {
+    text-align: center;
+    width: 80px;
+}
+
+table th:last-child {
+    text-align: center;
+    width: 80px;
+}
+
+/* Make buttons smaller on mobile */
+@media (max-width: 768px) {
+    .btn-delete-entry {
+        padding: 0.375rem 0.5rem;
+        font-size: 0.75rem;
+    }
+    
+    .btn-delete-entry i {
+        font-size: 0.75rem;
+    }
+}
