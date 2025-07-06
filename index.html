@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fuel Consumption Tracker</title>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div id="app">
+        <!-- Auth Screens -->
+        <div id="auth-screen" class="screen">
+            <div class="auth-container">
+                <div class="auth-tabs">
+                    <button class="auth-tab active" data-tab="login">Login</button>
+                    <button class="auth-tab" data-tab="register">Register</button>
+                </div>
+                
+                <div id="login-form" class="auth-form active">
+                    <h2>Welcome Back</h2>
+                    <div class="form-group">
+                        <label for="login-username">Username</label>
+                        <input type="text" id="login-username" placeholder="Enter your username">
+                    </div>
+                    <div class="form-group">
+                        <label for="login-password">Password</label>
+                        <input type="password" id="login-password" placeholder="Enter your password">
+                    </div>
+                    <button id="login-btn" class="btn-primary">Login</button>
+                </div>
+                
+                <div id="register-form" class="auth-form">
+                    <h2>Create Account</h2>
+                    <div class="form-group">
+                        <label for="register-username">Username</label>
+                        <input type="text" id="register-username" placeholder="Choose a username">
+                    </div>
+                    <div class="form-group">
+                        <label for="register-email">Email</label>
+                        <input type="email" id="register-email" placeholder="Enter your email">
+                    </div>
+                    <div class="form-group">
+                        <label for="register-fullname">Full Name</label>
+                        <input type="text" id="register-fullname" placeholder="Enter your full name">
+                    </div>
+                    <div class="form-group">
+                        <label for="register-password">Password</label>
+                        <input type="password" id="register-password" placeholder="Choose a password">
+                    </div>
+                    <div class="form-group">
+                        <label for="register-confirm-password">Confirm Password</label>
+                        <input type="password" id="register-confirm-password" placeholder="Confirm your password">
+                    </div>
+                    <button id="register-btn" class="btn-primary">Register</button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Main App Screen (hidden initially) -->
+        <div id="main-screen" class="screen hidden">
+            <header class="app-header">
+                <div class="header-content">
+                    <h1 id="app-title">Fuel Tracker</h1>
+                    <div class="user-menu">
+                        <span id="username-display"></span>
+                        <button id="logout-btn" class="btn-icon" title="Logout">
+                            <i class="fas fa-sign-out-alt"></i>
+                        </button>
+                    </div>
+                </div>
+                <nav class="app-nav">
+                    <button class="nav-btn active" data-tab="dashboard">
+                        <i class="fas fa-tachometer-alt"></i> Dashboard
+                    </button>
+                    <button class="nav-btn" data-tab="add-entry">
+                        <i class="fas fa-gas-pump"></i> Add Entry
+                    </button>
+                    <button class="nav-btn" data-tab="reports">
+                        <i class="fas fa-chart-bar"></i> Reports
+                    </button>
+                    <button class="nav-btn" data-tab="settings">
+                        <i class="fas fa-cog"></i> Settings
+                    </button>
+                </nav>
+            </header>
+            
+            <main class="app-content">
+                <!-- Dashboard Tab -->
+                <div id="dashboard-tab" class="content-tab active">
+                    <div class="tab-header">
+                        <h2>Dashboard</h2>
+                        <div class="vehicle-selector">
+                            <select id="dashboard-vehicle-select">
+                                <option value="">Loading vehicles...</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <div class="stat-value" id="avg-consumption">--</div>
+                            <div class="stat-label">Avg Efficiency (KM/L)</div>
+                            <div class="stat-trend up" id="consumption-trend">
+                                <i class="fas fa-arrow-up"></i> 0%
+                            </div>
+                        </div>
+                        
+                        <div class="stat-card">
+                            <div class="stat-value" id="total-distance">--</div>
+                            <div class="stat-label">Total Distance (km)</div>
+                        </div>
+                        
+                        <div class="stat-card">
+                            <div class="stat-value" id="total-fuel">--</div>
+                            <div class="stat-label">Total Fuel (L)</div>
+                        </div>
+                        
+                        <div class="stat-card">
+                            <div class="stat-value" id="total-cost">--</div>
+                            <div class="stat-label">Total Cost</div>
+                        </div>
+                    </div>
+                    
+                    <div class="chart-container">
+                        <canvas id="consumption-chart"></canvas>
+                    </div>
+                    
+                    <div class="recent-entries">
+                        <h3>Recent Fuel Entries</h3>
+                        <table id="recent-entries-table">
+                            <thead>
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Odometer</th>
+                                    <th>Liters</th>
+                                    <th>Price/L</th>
+                                    <th>Total</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td colspan="5">No entries found</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                
+                <!-- Add Entry Tab -->
+                <div id="add-entry-tab" class="content-tab">
+                    <div class="tab-header">
+                        <h2>Add Fuel Entry</h2>
+                    </div>
+                    
+                    <form id="add-entry-form" class="entry-form">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="entry-vehicle">Vehicle</label>
+                                <select id="entry-vehicle" required>
+                                    <option value="">Select a vehicle</option>
+                                </select>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="entry-date">Date & Time</label>
+                                <input type="datetime-local" id="entry-date" required>
+                                <small class="form-help">Default is current time. You can change to a specific time if needed.</small>
+                            </div>
+                        </div>
+                        
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="entry-odometer">Odometer (km)</label>
+                                <input type="number" id="entry-odometer" step="0.1" min="0" required>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="entry-liters">Liters</label>
+                                <input type="number" id="entry-liters" step="0.01" min="0" required>
+                            </div>
+                        </div>
+                        
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="entry-price">Price per Liter</label>
+                                <input type="number" id="entry-price" step="0.001" min="0" required>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="entry-total">Total Cost</label>
+                                <input type="number" id="entry-total" step="0.01" min="0" readonly>
+                            </div>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="entry-full-tank">
+                                <input type="checkbox" id="entry-full-tank" checked>
+                                Full Tank
+                            </label>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="entry-notes">Notes</label>
+                            <textarea id="entry-notes" rows="3"></textarea>
+                        </div>
+                        
+                        <div class="form-actions">
+                            <button type="reset" class="btn-secondary">Clear</button>
+                            <button type="submit" class="btn-primary">Save Entry</button>
+                        </div>
+                    </form>
+                </div>
+                
+                <!-- Reports Tab -->
+                <div id="reports-tab" class="content-tab">
+                    <div class="tab-header">
+                        <h2>Reports</h2>
+                        <div class="report-controls">
+                            <select id="report-vehicle-select">
+                                <option value="">All Vehicles</option>
+                            </select>
+                            <select id="report-period">
+                                <option value="month">This Month</option>
+                                <option value="year">This Year</option>
+                                <option value="custom">Custom Range</option>
+                            </select>
+                            <div id="custom-range-controls" class="hidden">
+                                <input type="date" id="report-start-date">
+                                <span>to</span>
+                                <input type="date" id="report-end-date">
+                            </div>
+                            <button id="generate-report-btn" class="btn-primary">Generate</button>
+                        </div>
+                    </div>
+                    
+                    <div class="report-results">
+                        <div class="report-charts">
+                            <div class="chart-container">
+                                <canvas id="report-consumption-chart"></canvas>
+                            </div>
+                            <div class="chart-container">
+                                <canvas id="report-cost-chart"></canvas>
+                            </div>
+                        </div>
+                        
+                        <div class="report-table-container">
+                            <table id="report-table">
+                                <thead>
+                                    <tr>
+                                        <th>Date</th>
+                                        <th>Vehicle</th>
+                                        <th>Odometer</th>
+                                        <th>Liters</th>
+                                        <th>Price/L</th>
+                                        <th>Total</th>
+                                        <th>Consumption</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td colspan="7">No data available. Generate a report first.</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Settings Tab -->
+<div id="settings-tab" class="content-tab">
+    <div class="tab-header">
+        <h2>Settings</h2>
+    </div>
+    
+    <div class="settings-tabs" role="tablist">
+        <button class="settings-tab-btn active" 
+                data-tab="profile"
+                role="tab"
+                aria-selected="true"
+                aria-controls="profile-settings">
+            Profile
+        </button>
+        <button class="settings-tab-btn" 
+                data-tab="vehicles"
+                role="tab"
+                aria-selected="false"
+                aria-controls="vehicles-settings">
+            Vehicles
+        </button>
+    </div>
+    
+    <!-- Profile Settings -->
+    <div id="profile-settings" class="settings-content active" role="tabpanel">
+        <form id="profile-form">
+            <div class="form-group">
+                <label for="profile-username">Username</label>
+                <input type="text" id="profile-username" readonly>
+            </div>
+            <div class="form-group">
+                <label for="profile-email">Email</label>
+                <input type="email" id="profile-email">
+            </div>
+            <div class="form-group">
+                <label for="profile-fullname">Full Name</label>
+                <input type="text" id="profile-fullname">
+            </div>
+            <button type="submit" class="btn-primary">Update Profile</button>
+        </form>
+        
+        <div class="password-change">
+            <h3>Change Password</h3>
+            <form id="password-form">
+                <div class="form-group">
+                    <label for="current-password">Current Password</label>
+                    <input type="password" id="current-password">
+                </div>
+                <div class="form-group">
+                    <label for="new-password">New Password</label>
+                    <input type="password" id="new-password">
+                </div>
+                <div class="form-group">
+                    <label for="confirm-password">Confirm New Password</label>
+                    <input type="password" id="confirm-password">
+                </div>
+                <button type="submit" class="btn-primary">Change Password</button>
+            </form>
+        </div>
+    </div>
+    
+    <!-- Vehicle Settings -->
+    <div id="vehicles-settings" class="settings-content" role="tabpanel">
+        <div id="vehicles-loading" class="hidden">
+            <div class="loading-spinner small"></div>
+            <span>Loading vehicles...</span>
+        </div>
+        
+        <button id="add-vehicle-btn" class="btn-primary">
+            <i class="fas fa-plus"></i> Add Vehicle
+        </button>
+        
+        <div id="vehicles-list" class="vehicles-grid">
+            <div class="no-vehicles">
+                <p>You don't have any vehicles yet.</p>
+                <button class="btn-primary" id="add-first-vehicle">Add Your First Vehicle</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Add Vehicle Modal -->
+    <div id="add-vehicle-modal" class="modal hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Add New Vehicle</h3>
+                <button class="modal-close" aria-label="Close modal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="add-vehicle-form">
+                    <div class="form-group">
+                        <label for="vehicle-make">Make</label>
+                        <input type="text" id="vehicle-make" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="vehicle-model">Model</label>
+                        <input type="text" id="vehicle-model" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="vehicle-year">Year</label>
+                        <input type="number" id="vehicle-year" min="1900" max="2099">
+                    </div>
+                    <div class="form-group">
+                        <label for="vehicle-fuel-type">Fuel Type</label>
+                        <select id="vehicle-fuel-type">
+                            <option value="Petrol">Petrol</option>
+                            <option value="Diesel">Diesel</option>
+                            <option value="Electric">Electric</option>
+                            <option value="Hybrid">Hybrid</option>
+                            <option value="Other">Other</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="vehicle-odometer">Current Odometer (km)</label>
+                        <input type="number" id="vehicle-odometer" step="0.1" min="0">
+                    </div>
+                    <div class="form-actions">
+                        <button type="button" class="btn-secondary modal-close">Cancel</button>
+                        <button type="submit" class="btn-primary">Save Vehicle</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+    <!-- Loading Overlay -->
+    <div id="loading-overlay" class="hidden">
+        <div class="loading-spinner"></div>
+    </div>
+
+    <!-- Toast Notifications -->
+    <div id="toast-container"></div>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
