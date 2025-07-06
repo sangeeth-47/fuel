@@ -295,6 +295,11 @@ body {
     color: var(--danger-color);
 }
 
+.stat-trend.neutral {
+    background-color: rgba(66, 133, 244, 0.1);
+    color: var(--primary-color);
+}
+
 /* Custom Chart.js tooltip styles */
 .chartjs-tooltip {
     background: rgba(0, 0, 0, 0.8) !important;

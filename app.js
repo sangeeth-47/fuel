@@ -1029,12 +1029,29 @@ async function refreshToken() {
             
             if (previousEfficiency > 0) {
                 const percentageChange = ((lastEfficiency - previousEfficiency) / previousEfficiency) * 100;
-                const isImprovement = percentageChange > 0;
+                
+                // Determine trend color based on percentage change
+                let trendClass = 'stat-trend';
+                let trendIcon = 'fas fa-minus';
+                
+                if (percentageChange > 0) {
+                    // Positive change - show green
+                    trendClass = 'stat-trend up';
+                    trendIcon = 'fas fa-arrow-up';
+                } else if (percentageChange < 0) {
+                    // Negative change - show red
+                    trendClass = 'stat-trend down';
+                    trendIcon = 'fas fa-arrow-down';
+                } else {
+                    // No change (exactly 0%) - show blue
+                    trendClass = 'stat-trend neutral';
+                    trendIcon = 'fas fa-minus';
+                }
                 
                 // Update trend display
-                trendElement.className = `stat-trend ${isImprovement ? 'up' : 'down'}`;
+                trendElement.className = trendClass;
                 trendElement.innerHTML = `
-                    <i class="fas fa-arrow-${isImprovement ? 'up' : 'down'}"></i> ${Math.abs(percentageChange).toFixed(1)}%
+                    <i class="${trendIcon}"></i> ${Math.abs(percentageChange).toFixed(1)}%
                 `;
             } else {
                 trendElement.className = 'stat-trend';
