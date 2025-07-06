@@ -1066,32 +1066,38 @@ async function refreshToken() {
         console.log('Original data:', data.stats.consumptionData.map(item => ({ date: item.date, consumption: item.consumption })));
         console.log('Sorted data:', sortedConsumptionData.map(item => ({ date: item.date, consumption: item.consumption })));
         
+        // Limit to last 6 consumption data points for cleaner dashboard display
+        const last6ConsumptionData = sortedConsumptionData.slice(-6);
+        console.log(`Limiting dashboard chart to last 6 consumption data points (out of ${sortedConsumptionData.length} total)`);
+        
         // Use formatted dates for labels to ensure proper display
-        const labels = sortedConsumptionData.map(item => 
+        const labels = last6ConsumptionData.map(item => 
             formatDate(item.date)
         );
         console.log('Chart labels in order:', labels);
         console.log('=== END SORTING DEBUG ===');
         
         // Convert from L/100km to KM/L: KM/L = 100 / (L/100km)
-        const efficiencyData = sortedConsumptionData.map(item => 
+        const efficiencyData = last6ConsumptionData.map(item => 
             item.consumption > 0 ? (100 / item.consumption).toFixed(2) : 0
         );
         
-        // Prepare fuel entry data points for overlay
+        // Prepare fuel entry data points for overlay - limit to match chart labels
         const fuelEntryData = [];
         const fuelEntryLabels = [];
         
         if (data.entries && data.entries.length > 0) {
-            // Sort entries by date and create data points for fuel entries
+            // Sort entries by date and take only entries that match our limited chart labels
             const sortedEntries = [...data.entries].sort((a, b) => new Date(a.EntryDate) - new Date(b.EntryDate));
+            
+            console.log(`Matching fuel entries to limited chart labels (${labels.length} labels)`);
             
             sortedEntries.forEach(entry => {
                 const entryDate = formatDate(entry.EntryDate);
                 fuelEntryLabels.push(entryDate);
                 
-                // Only add fuel entry points if their date exists in our consumption chart labels
-                // This prevents extra dates from being added to the chart
+                // Only add fuel entry points if their date exists in our limited consumption chart labels
+                // This ensures the fuel entry scatter points match the limited x-axis
                 if (labels.includes(entryDate)) {
                     fuelEntryData.push({
                         x: entryDate,
@@ -1621,6 +1627,7 @@ async function refreshToken() {
                     date: entry.EntryDate,
                     dateLocal: entryDate.toLocaleString(),
                     dateISO: entryDate.toISOString(),
+                    vehicleId: entry.VehicleId,
                     odometer: entry.Odometer,
                     liters: entry.Liters,
                     cost: entry.TotalCost,
@@ -1682,10 +1689,11 @@ async function refreshToken() {
                 }
             });
             
-            // Now calculate total distance for each month
+            // Now calculate total distance and fuel consumption for each month
             Object.keys(monthlyData).forEach(monthYear => {
                 const month = monthlyData[monthYear];
                 let monthTotalDistance = 0;
+                let monthTotalFuelConsumed = 0;
                 
                 Object.keys(month.vehicles).forEach(vehicleId => {
                     const vehicleData = month.vehicles[vehicleId];
@@ -1693,18 +1701,84 @@ async function refreshToken() {
                     if (distance > 0) {
                         monthTotalDistance += distance;
                         vehicleData.distance = distance;
+                        
+                        // For combined efficiency calculation, we need to count only the fuel
+                        // that was actually consumed for the distance traveled.
+                        // 
+                        // The correct approach is to find fuel entries that correspond to
+                        // the distance traveled, not all fuel entries in the month.
+                        
+                        // Sort entries by odometer reading
+                        const sortedEntries = vehicleData.entries.sort((a, b) => a.Odometer - b.Odometer);
+                        
+                        // Find the fuel entry that corresponds to the end of our distance range
+                        let fuelConsumedForDistance = 0;
+                        
+                        // Look for the fuel entry at the max odometer reading
+                        const maxOdometerEntry = sortedEntries.find(entry => entry.Odometer === vehicleData.maxOdometer);
+                        if (maxOdometerEntry) {
+                            // This fuel entry represents the fuel consumed for the distance traveled
+                            fuelConsumedForDistance = maxOdometerEntry.Liters;
+                        } else {
+                            // Fallback: use all fuel for this vehicle in this month
+                            fuelConsumedForDistance = vehicleData.liters;
+                        }
+                        
+                        monthTotalFuelConsumed += fuelConsumedForDistance;
+                        vehicleData.fuelConsumed = fuelConsumedForDistance;
                     }
                 });
                 
                 month.totalDistance = monthTotalDistance;
+                month.totalFuelConsumed = monthTotalFuelConsumed;
             });
             
             // Prepare data for charts
             const months = Object.keys(monthlyData).sort();
-            const consumptionData = months.map(month => {
+            
+            // Calculate average efficiency using standard formula: Total Distance ÷ Total Fuel Consumed
+            const efficiencyData = months.map(month => {
                 const data = monthlyData[month];
-                return data.totalDistance > 0 ? 
-                    (data.totalLiters / data.totalDistance) * 100 : 0;
+                
+                if (data.totalDistance <= 0 || data.totalFuelConsumed <= 0) {
+                    console.log(`=== SKIPPING ${month} - NO DATA ===`);
+                    console.log('Total distance:', data.totalDistance, 'km');
+                    console.log('Total fuel consumed:', data.totalFuelConsumed, 'L');
+                    return 0;
+                }
+                
+                // Standard formula: Average Efficiency = Total Distance ÷ Total Fuel Consumed
+                const averageEfficiency = data.totalDistance / data.totalFuelConsumed;
+                
+                console.log(`=== EFFICIENCY CALCULATION FOR ${month} ===`);
+                console.log('Total fuel purchased for month:', data.totalLiters, 'L');
+                console.log('Total fuel consumed for month:', data.totalFuelConsumed, 'L');
+                console.log('Total distance for month:', data.totalDistance, 'km');
+                console.log('Average efficiency:', averageEfficiency.toFixed(2), 'KM/L');
+                console.log('Formula used: Total Distance ÷ Total Fuel Consumed =', data.totalDistance, '÷', data.totalFuelConsumed, '=', averageEfficiency.toFixed(2));
+                
+                // Show individual vehicle contributions for debugging
+                Object.keys(data.vehicles).forEach(vehicleId => {
+                    const vehicleData = data.vehicles[vehicleId];
+                    const distance = vehicleData.distance || 0;
+                          console.log(`Vehicle ${vehicleId} data:`, {
+                    minOdometer: vehicleData.minOdometer,
+                    maxOdometer: vehicleData.maxOdometer,
+                    calculatedDistance: distance + ' km',
+                    litersPurchased: vehicleData.liters + ' L',
+                    fuelConsumed: (vehicleData.fuelConsumed || 0).toFixed(2) + ' L',
+                    individualEfficiency: distance > 0 && vehicleData.fuelConsumed > 0 ? (distance / vehicleData.fuelConsumed).toFixed(2) + ' KM/L' : 'N/A',
+                    entries: vehicleData.entries.map(e => ({
+                        odometer: e.Odometer,
+                        liters: e.Liters,
+                        date: e.EntryDate
+                    }))
+                });
+                });
+                
+                console.log('=== END EFFICIENCY CALCULATION ===');
+                
+                return averageEfficiency;
             });
             
             const costData = months.map(month => monthlyData[month].totalCost);
@@ -1713,11 +1787,6 @@ async function refreshToken() {
             if (reportConsumptionChart) {
                 reportConsumptionChart.destroy();
             }
-            
-            // Convert consumption data from L/100km to KM/L
-            const efficiencyData = consumptionData.map(value => 
-                value > 0 ? (100 / value) : 0
-            );
             
             const consumptionCtx = document.getElementById('report-consumption-chart').getContext('2d');
             reportConsumptionChart = new Chart(consumptionCtx, {
