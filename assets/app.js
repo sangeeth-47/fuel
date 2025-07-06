@@ -56,7 +56,45 @@ document.addEventListener('DOMContentLoaded', function() {
 }
     
     function setupEventListeners() {
-        // Auth tab switching
+        // Auth sliding panel functionality (desktop)
+        const signUpButton = document.getElementById('signUp');
+        const signInButton = document.getElementById('signIn');
+        const authContainer = document.getElementById('auth-container');
+        
+        // Mobile tab functionality
+        const mobileSignInTab = document.getElementById('mobile-sign-in');
+        const mobileSignUpTab = document.getElementById('mobile-sign-up');
+        
+        if (signUpButton) {
+            signUpButton.addEventListener('click', () => {
+                authContainer.classList.add('right-panel-active');
+            });
+        }
+        
+        if (signInButton) {
+            signInButton.addEventListener('click', () => {
+                authContainer.classList.remove('right-panel-active');
+            });
+        }
+        
+        // Mobile tab event listeners
+        if (mobileSignInTab) {
+            mobileSignInTab.addEventListener('click', () => {
+                authContainer.classList.remove('right-panel-active');
+                mobileSignInTab.classList.add('active');
+                mobileSignUpTab.classList.remove('active');
+            });
+        }
+        
+        if (mobileSignUpTab) {
+            mobileSignUpTab.addEventListener('click', () => {
+                authContainer.classList.add('right-panel-active');
+                mobileSignUpTab.classList.add('active');
+                mobileSignInTab.classList.remove('active');
+            });
+        }
+        
+        // Auth tab switching (legacy support)
         authTabs.forEach(tab => {
             tab.addEventListener('click', function() {
                 const tabName = this.getAttribute('data-tab');
@@ -295,17 +333,26 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Auth functions
     function switchAuthTab(tabName) {
-        authTabs.forEach(tab => tab.classList.remove('active'));
-        document.querySelector(`.auth-tab[data-tab="${tabName}"]`).classList.add('active');
+        const authContainer = document.getElementById('auth-container');
         
-        loginForm.classList.remove('active');
-        registerForm.classList.remove('active');
-        document.getElementById(`${tabName}-form`).classList.add('active');
+        if (tabName === 'register') {
+            authContainer.classList.add('right-panel-active');
+        } else {
+            authContainer.classList.remove('right-panel-active');
+        }
+        
+        // Legacy support for old auth tab system
+        authTabs.forEach(tab => tab.classList.remove('active'));
+        const activeTab = document.querySelector(`.auth-tab[data-tab="${tabName}"]`);
+        if (activeTab) {
+            activeTab.classList.add('active');
+        }
     }
     
     async function handleLogin(e) {
     e.preventDefault();
     
+    const loginBtn = document.getElementById('login-btn');
     const username = document.getElementById('login-username').value.trim();
     const password = document.getElementById('login-password').value;
     
@@ -316,6 +363,9 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     try {
+        // Show button loading state
+        loginBtn.classList.add('loading');
+        loginBtn.disabled = true;
         showLoading();
         
         const response = await fetch(`${apiBaseUrl}/login`, {
@@ -336,7 +386,16 @@ document.addEventListener('DOMContentLoaded', function() {
         }
 
         if (!response.ok) {
-            throw new Error(data.message || `Login failed (HTTP ${response.status})`);
+            // Handle specific error cases
+            if (response.status === 401) {
+                throw new Error('Invalid username or password');
+            } else if (response.status === 400) {
+                throw new Error(data.message || 'Please enter both username and password');
+            } else {
+                // Use the server's error message if available, otherwise use a generic message
+                const errorMessage = data.message || `Login failed (HTTP ${response.status})`;
+                throw new Error(errorMessage);
+            }
         }
 
         // Validate response structure
@@ -372,14 +431,16 @@ document.addEventListener('DOMContentLoaded', function() {
         // Clear any partial auth data on failure
         localStorage.removeItem('fuelTrackerUser');
         localStorage.removeItem('fuelTrackerToken');
+        currentUser = null;
+        authToken = null;
         
-        showToast(
-            error.message.includes('Invalid credentials') 
-                ? 'Wrong username or password' 
-                : error.message,
-            'error'
-        );
+        // Show error message - don't navigate to dashboard
+        showToast(error.message, 'error');
     } finally {
+        // Remove button loading state
+        const loginBtn = document.getElementById('login-btn');
+        loginBtn.classList.remove('loading');
+        loginBtn.disabled = false;
         hideLoading();
     }
 }
@@ -422,6 +483,7 @@ async function refreshToken() {
     async function handleRegister(e) {
         e.preventDefault();
         
+        const registerBtn = document.getElementById('register-btn');
         const username = document.getElementById('register-username').value.trim();
         const email = document.getElementById('register-email').value.trim();
         const fullName = document.getElementById('register-fullname').value.trim();
@@ -439,6 +501,9 @@ async function refreshToken() {
         }
         
         try {
+            // Show button loading state
+            registerBtn.classList.add('loading');
+            registerBtn.disabled = true;
             showLoading();
             
             const response = await fetch(`${apiBaseUrl}/register`, {
@@ -448,19 +513,40 @@ async function refreshToken() {
                 },
                 body: JSON.stringify({ username, email, fullName, password })
             });
-            
-            const data = await response.json();
-            
-            if (response.ok) {
-                showToast('Registration successful! Please login', 'success');
-                switchAuthTab('login');
-                document.getElementById('register-form').reset();
-            } else {
-                throw new Error(data.message || 'Registration failed');
+
+            // Handle non-JSON responses
+            const responseText = await response.text();
+            let data;
+            try {
+                data = responseText ? JSON.parse(responseText) : {};
+            } catch {
+                throw new Error('Invalid server response');
             }
+
+            if (!response.ok) {
+                // Handle specific error cases
+                if (response.status === 400) {
+                    throw new Error(data.message || 'Please fill in all required fields correctly');
+                } else if (response.status === 409) {
+                    throw new Error('Username or email already exists. Please choose different ones.');
+                } else if (response.status === 500) {
+                    throw new Error('Registration failed due to server error. Please try again later.');
+                } else {
+                    // Use the server's error message if available, otherwise use a generic message
+                    const errorMessage = data.message || `Registration failed (HTTP ${response.status})`;
+                    throw new Error(errorMessage);
+                }
+            }
+
+            showToast('Registration completed successfully! Please login', 'success');
+            switchAuthTab('login');
+            document.getElementById('register-form').reset();
         } catch (error) {
             showToast(error.message, 'error');
         } finally {
+            // Remove button loading state
+            registerBtn.classList.remove('loading');
+            registerBtn.disabled = false;
             hideLoading();
         }
     }
@@ -570,6 +656,19 @@ async function refreshToken() {
     }
     
     function showToast(message, type = 'info') {
+        console.log('showToast called with:', { message, type });
+        
+        // Get toast container fresh each time to ensure it exists
+        const toastContainer = document.getElementById('toast-container');
+        
+        if (!toastContainer) {
+            console.error('Toast container not found! Falling back to alert.');
+            alert(`${type.toUpperCase()}: ${message}`);
+            return;
+        }
+        
+        console.log('Toast container found, creating toast element');
+        
         const toast = document.createElement('div');
         toast.className = `toast ${type}`;
         toast.innerHTML = `
@@ -577,16 +676,113 @@ async function refreshToken() {
             <button class="toast-close">&times;</button>
         `;
         
-        toast.querySelector('.toast-close').addEventListener('click', () => {
-            toast.remove();
+        // Add inline styles to ensure visibility with fixed positioning
+        toast.style.cssText = `
+            position: fixed !important;
+            bottom: 20px !important;
+            right: 20px !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: space-between !important;
+            padding: 1rem 1.5rem !important;
+            margin-bottom: 0.5rem !important;
+            border-radius: 4px !important;
+            min-width: 250px !important;
+            max-width: 400px !important;
+            color: white !important;
+            background-color: ${type === 'error' ? '#ea4335' : type === 'success' ? '#34a853' : type === 'warning' ? '#fbbc05' : '#343a40'} !important;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3) !important;
+            opacity: 1 !important;
+            visibility: visible !important;
+            transform: translateX(0) !important;
+            z-index: 9999 !important;
+            border: 2px solid rgba(255, 255, 255, 0.3) !important;
+            font-size: 14px !important;
+            font-family: inherit !important;
+            pointer-events: auto !important;
+        `;
+        
+        // Add event listener for close button
+        const closeBtn = toast.querySelector('.toast-close');
+        if (closeBtn) {
+            closeBtn.style.cssText = `
+                background: none !important;
+                border: none !important;
+                color: inherit !important;
+                font-size: 1.25rem !important;
+                cursor: pointer !important;
+                margin-left: 1rem !important;
+                padding: 0 !important;
+                opacity: 0.8 !important;
+            `;
+            closeBtn.addEventListener('click', () => {
+                console.log('Toast close button clicked');
+                if (toast.parentNode) {
+                    toast.remove();
+                }
+            });
+        }
+        
+        // Add toast directly to body instead of container to avoid any positioning issues
+        document.body.appendChild(toast);
+        console.log('Toast added to body');
+        
+        // Debug: Check if toast is visible
+        const toastRect = toast.getBoundingClientRect();
+        const containerRect = toastContainer.getBoundingClientRect();
+        console.log('Toast position details:', {
+            toast: {
+                x: toastRect.x,
+                y: toastRect.y,
+                width: toastRect.width,
+                height: toastRect.height,
+                top: toastRect.top,
+                left: toastRect.left,
+                right: toastRect.right,
+                bottom: toastRect.bottom
+            },
+            container: {
+                x: containerRect.x,
+                y: containerRect.y,
+                width: containerRect.width,
+                height: containerRect.height,
+                top: containerRect.top,
+                left: containerRect.left,
+                right: containerRect.right,
+                bottom: containerRect.bottom
+            },
+            computedStyle: {
+                display: window.getComputedStyle(toast).display,
+                visibility: window.getComputedStyle(toast).visibility,
+                opacity: window.getComputedStyle(toast).opacity,
+                zIndex: window.getComputedStyle(toast).zIndex,
+                position: window.getComputedStyle(toast).position,
+                backgroundColor: window.getComputedStyle(toast).backgroundColor,
+                color: window.getComputedStyle(toast).color
+            },
+            containerStyle: {
+                display: window.getComputedStyle(toastContainer).display,
+                visibility: window.getComputedStyle(toastContainer).visibility,
+                opacity: window.getComputedStyle(toastContainer).opacity,
+                zIndex: window.getComputedStyle(toastContainer).zIndex,
+                position: window.getComputedStyle(toastContainer).position,
+                top: window.getComputedStyle(toastContainer).top,
+                right: window.getComputedStyle(toastContainer).right,
+                bottom: window.getComputedStyle(toastContainer).bottom,
+                left: window.getComputedStyle(toastContainer).left
+            }
         });
         
-        toastContainer.appendChild(toast);
+        // Force reflow to ensure the toast is rendered
+        toast.offsetHeight;
         
-        // Auto remove after 5 seconds
+        // Auto remove after 4 seconds
         setTimeout(() => {
-            toast.remove();
-        }, 5000);
+            console.log('Auto-removing toast after 4 seconds');
+            if (toast.parentNode) {
+                toast.remove();
+            }
+        }, 4000);
     }
     
     // Dashboard functions

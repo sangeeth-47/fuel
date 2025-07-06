@@ -12,48 +12,55 @@
     <div id="app">
         <!-- Auth Screens -->
         <div id="auth-screen" class="screen">
-            <div class="auth-container">
-                <div class="auth-tabs">
-                    <button class="auth-tab active" data-tab="login">Login</button>
-                    <button class="auth-tab" data-tab="register">Register</button>
+            <div class="auth-header">
+                <div class="app-logo">
+                    <i class="fas fa-gas-pump"></i>
+                </div>
+                <h1 class="app-title">
+                    <span class="title-main">Fuel Consumption</span>
+                    <span class="title-sub">Tracker</span>
+                </h1>
+                <p class="app-tagline">Track your fuel efficiency and save money</p>
+            </div>
+            <div class="auth-container" id="auth-container">
+                <!-- Mobile tabs (visible only on mobile) -->
+                <div class="mobile-auth-tabs">
+                    <button class="mobile-auth-tab active" id="mobile-sign-in">Sign In</button>
+                    <button class="mobile-auth-tab" id="mobile-sign-up">Sign Up</button>
                 </div>
                 
-                <div id="login-form" class="auth-form active">
-                    <h2>Welcome Back</h2>
-                    <div class="form-group">
-                        <label for="login-username">Username</label>
-                        <input type="text" id="login-username" placeholder="Enter your username">
-                    </div>
-                    <div class="form-group">
-                        <label for="login-password">Password</label>
-                        <input type="password" id="login-password" placeholder="Enter your password">
-                    </div>
-                    <button id="login-btn" class="btn-primary">Login</button>
+                <div class="form-container sign-up-container">
+                    <form id="register-form" class="auth-form">
+                        <h1>Create Account</h1>
+                        <input type="text" id="register-username" placeholder="Username" required>
+                        <input type="email" id="register-email" placeholder="Email" required>
+                        <input type="text" id="register-fullname" placeholder="Full Name">
+                        <input type="password" id="register-password" placeholder="Password" required>
+                        <input type="password" id="register-confirm-password" placeholder="Confirm Password" required>
+                        <button type="button" id="register-btn" class="auth-btn">Sign Up</button>
+                    </form>
                 </div>
-                
-                <div id="register-form" class="auth-form">
-                    <h2>Create Account</h2>
-                    <div class="form-group">
-                        <label for="register-username">Username</label>
-                        <input type="text" id="register-username" placeholder="Choose a username">
+                <div class="form-container sign-in-container">
+                    <form id="login-form" class="auth-form">
+                        <h1>Sign in</h1>
+                        <input type="text" id="login-username" placeholder="Username" required>
+                        <input type="password" id="login-password" placeholder="Password" required>
+                        <button type="button" id="login-btn" class="auth-btn">Sign In</button>
+                    </form>
+                </div>
+                <div class="overlay-container">
+                    <div class="overlay">
+                        <div class="overlay-panel overlay-left">
+                            <h1>Welcome Back!</h1>
+                            <p>To keep connected with us please login with your personal info</p>
+                            <button class="ghost" id="signIn">Sign In</button>
+                        </div>
+                        <div class="overlay-panel overlay-right">
+                            <h1>Hello, Friend!</h1>
+                            <p>Enter your personal details and start journey with us</p>
+                            <button class="ghost" id="signUp">Sign Up</button>
+                        </div>
                     </div>
-                    <div class="form-group">
-                        <label for="register-email">Email</label>
-                        <input type="email" id="register-email" placeholder="Enter your email">
-                    </div>
-                    <div class="form-group">
-                        <label for="register-fullname">Full Name</label>
-                        <input type="text" id="register-fullname" placeholder="Enter your full name">
-                    </div>
-                    <div class="form-group">
-                        <label for="register-password">Password</label>
-                        <input type="password" id="register-password" placeholder="Choose a password">
-                    </div>
-                    <div class="form-group">
-                        <label for="register-confirm-password">Confirm Password</label>
-                        <input type="password" id="register-confirm-password" placeholder="Confirm your password">
-                    </div>
-                    <button id="register-btn" class="btn-primary">Register</button>
                 </div>
             </div>
         </div>
