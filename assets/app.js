@@ -917,32 +917,36 @@ async function refreshToken() {
                 let avgEfficiency = '--';
                 
                 if (entries.length > 1) {
-                    // Find min and max odometer
+                    // Find min and max odometer for total distance calculation
                     const odometers = entries.map(e => e.Odometer).filter(o => typeof o === 'number');
-                    console.log('Odometer readings:', odometers);
+                    console.log('Odometer readings for basic calculation:', odometers);
                     if (odometers.length > 1) {
                         const minOdo = Math.min(...odometers);
                         const maxOdo = Math.max(...odometers);
                         const distance = maxOdo - minOdo;
-                        console.log(`Distance calculation: ${maxOdo} - ${minOdo} = ${distance}`);
+                        console.log(`Correct distance calculation: ${maxOdo} - ${minOdo} = ${distance} km`);
+                        console.log(`Total fuel used: ${totalLiters} L`);
                         
                         if (distance > 0) {
                             totalDistance = distance.toFixed(1);
                             
-                            // Calculate basic efficiency: KM/L = Total Distance / Total Fuel
+                            // Calculate correct efficiency: KM/L = Total Distance / Total Fuel
                             if (totalLiters > 0) {
                                 const efficiency = distance / totalLiters;
                                 avgEfficiency = efficiency.toFixed(2);
-                                console.log(`Basic efficiency calculation: ${distance} km / ${totalLiters} L = ${efficiency.toFixed(2)} KM/L`);
+                                console.log(`Correct efficiency calculation: ${distance} km / ${totalLiters} L = ${efficiency.toFixed(2)} KM/L`);
                                 
-                                // Also update the trend to show this is a basic calculation
+                                // Also update the trend to show this is a corrected calculation
                                 const trendElement = document.getElementById('consumption-trend');
                                 trendElement.className = 'stat-trend';
-                                trendElement.innerHTML = '<i class="fas fa-calculator"></i> Basic';
+                                trendElement.innerHTML = '<i class="fas fa-calculator"></i> Corrected';
                             }
                         } else {
                             totalDistance = '0.0';
+                            console.log('Zero distance calculated - no movement between entries');
                         }
+                    } else {
+                        console.log('Insufficient odometer readings for distance calculation');
                     }
                 }
 
@@ -962,7 +966,7 @@ async function refreshToken() {
                 if (entries.length === 1) {
                     showToast('Add one more fuel entry to see consumption statistics', 'info');
                 } else if (avgEfficiency !== '--') {
-                    showToast(`Basic efficiency calculated: ${avgEfficiency} KM/L. Add more sequential entries for detailed analytics.`, 'info');
+                    showToast(`Efficiency calculated: ${avgEfficiency} KM/L (total distance ÷ total fuel)`, 'success');
                 } else {
                     const message = data.message || 'Not enough data to calculate consumption. For multiple daily fuel entries, ensure you have valid fuel amounts and odometer readings that progress correctly between days.';
                     showToast(message, 'info');
@@ -1056,10 +1060,60 @@ async function refreshToken() {
         }
         
         // Update stats cards with calculated statistics
-        // Convert average consumption from L/100km to KM/L
-        const avgEfficiency = data.stats.avgConsumption > 0 ? (100 / data.stats.avgConsumption) : 0;
+        // Check if server calculation is reasonable, if not use manual calculation
+        let avgEfficiency;
         
-        console.log('Stats Update:', {
+        console.log('Server stats data:', {
+            avgConsumption: data.stats.avgConsumption,
+            totalDistance: data.stats.totalDistance,
+            totalLiters: data.stats.totalLiters,
+            totalCost: data.stats.totalCost
+        });
+        
+        // Always calculate manually first for verification
+        let manualEfficiency = 0;
+        if (data.stats.totalDistance > 0 && data.stats.totalLiters > 0) {
+            manualEfficiency = data.stats.totalDistance / data.stats.totalLiters;
+            console.log(`Manual calculation: ${data.stats.totalDistance} km / ${data.stats.totalLiters} L = ${manualEfficiency.toFixed(2)} KM/L`);
+        }
+        
+        // Try to determine server calculation
+        if (data.stats.avgConsumption > 0) {
+            // Check different possible formats the server might be using
+            let serverEfficiency1 = data.stats.avgConsumption; // Direct KM/L
+            let serverEfficiency2 = 100 / data.stats.avgConsumption; // L/100km converted to KM/L
+            
+            console.log(`Server value: ${data.stats.avgConsumption}`);
+            console.log(`Option 1 (direct KM/L): ${serverEfficiency1.toFixed(2)}`);
+            console.log(`Option 2 (converted from L/100km): ${serverEfficiency2.toFixed(2)}`);
+            console.log(`Manual calculation: ${manualEfficiency.toFixed(2)}`);
+            
+            // Use the server value that's closest to manual calculation, or manual if both are way off
+            const diff1 = Math.abs(serverEfficiency1 - manualEfficiency);
+            const diff2 = Math.abs(serverEfficiency2 - manualEfficiency);
+            const diff3 = 0; // Manual is always exact match to itself
+            
+            if (manualEfficiency > 0 && (diff1 > 10 && diff2 > 10)) {
+                // Both server calculations are way off, use manual
+                avgEfficiency = manualEfficiency;
+                console.log(`Using manual calculation (server values too far off)`);
+                showToast(`Corrected efficiency: ${avgEfficiency.toFixed(2)} KM/L (server calculation was incorrect)`, 'warning');
+            } else if (diff1 <= diff2) {
+                // Direct value is closer
+                avgEfficiency = serverEfficiency1;
+                console.log(`Using direct server value`);
+            } else {
+                // Converted value is closer
+                avgEfficiency = serverEfficiency2;
+                console.log(`Using converted server value (L/100km → KM/L)`);
+            }
+        } else {
+            // Server didn't provide avgConsumption, use manual
+            avgEfficiency = manualEfficiency;
+            console.log(`Using manual calculation (no server avgConsumption)`);
+        }
+        
+        console.log('Final Stats Update:', {
             avgConsumption: data.stats.avgConsumption,
             avgEfficiency: avgEfficiency,
             totalDistance: data.stats.totalDistance,
@@ -1717,140 +1771,140 @@ async function refreshToken() {
             const vehicleMap = {};
             userVehicles.forEach(v => vehicleMap[v.VehicleId] = `${v.Make} ${v.Model}`);
             
-            // Group by month and vehicle - calculate total distance and fuel for each month
-            const monthlyData = {};
-            
-            // First, group entries by month and vehicle
-            entries.forEach(entry => {
-                const date = new Date(entry.EntryDate);
-                const monthYear = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+            // Universal calculation function that works for any time period
+            function calculateEfficiencyForPeriod(entries, periodLabel) {
+                console.log(`\n=== CALCULATING EFFICIENCY FOR ${periodLabel} ===`);
+                console.log('Total entries:', entries.length);
                 
-                if (!monthlyData[monthYear]) {
-                    monthlyData[monthYear] = {
-                        totalLiters: 0,
-                        totalCost: 0,
-                        totalDistance: 0,
-                        vehicles: {}
-                    };
-                }
-                
-                monthlyData[monthYear].totalLiters += entry.Liters;
-                monthlyData[monthYear].totalCost += entry.TotalCost;
-                
-                if (!monthlyData[monthYear].vehicles[entry.VehicleId]) {
-                    monthlyData[monthYear].vehicles[entry.VehicleId] = {
-                        entries: [],
-                        liters: 0,
-                        cost: 0,
-                        minOdometer: null,
-                        maxOdometer: null
-                    };
-                }
-                
-                monthlyData[monthYear].vehicles[entry.VehicleId].entries.push(entry);
-                monthlyData[monthYear].vehicles[entry.VehicleId].liters += entry.Liters;
-                monthlyData[monthYear].vehicles[entry.VehicleId].cost += entry.TotalCost;
-                
-                // Track min and max odometer readings for each vehicle per month
-                const vehicleData = monthlyData[monthYear].vehicles[entry.VehicleId];
-                if (vehicleData.minOdometer === null || entry.Odometer < vehicleData.minOdometer) {
-                    vehicleData.minOdometer = entry.Odometer;
-                }
-                if (vehicleData.maxOdometer === null || entry.Odometer > vehicleData.maxOdometer) {
-                    vehicleData.maxOdometer = entry.Odometer;
-                }
-            });
-            
-            // Now calculate total distance and fuel consumption for each month
-            Object.keys(monthlyData).forEach(monthYear => {
-                const month = monthlyData[monthYear];
-                let monthTotalDistance = 0;
-                let monthTotalFuelConsumed = 0;
-                
-                Object.keys(month.vehicles).forEach(vehicleId => {
-                    const vehicleData = month.vehicles[vehicleId];
-                    const distance = vehicleData.maxOdometer - vehicleData.minOdometer;
-                    if (distance > 0) {
-                        monthTotalDistance += distance;
-                        vehicleData.distance = distance;
-                        
-                        // For combined efficiency calculation, we need to count only the fuel
-                        // that was actually consumed for the distance traveled.
-                        // 
-                        // The correct approach is to find fuel entries that correspond to
-                        // the distance traveled, not all fuel entries in the month.
-                        
-                        // Sort entries by odometer reading
-                        const sortedEntries = vehicleData.entries.sort((a, b) => a.Odometer - b.Odometer);
-                        
-                        // Find the fuel entry that corresponds to the end of our distance range
-                        let fuelConsumedForDistance = 0;
-                        
-                        // Look for the fuel entry at the max odometer reading
-                        const maxOdometerEntry = sortedEntries.find(entry => entry.Odometer === vehicleData.maxOdometer);
-                        if (maxOdometerEntry) {
-                            // This fuel entry represents the fuel consumed for the distance traveled
-                            fuelConsumedForDistance = maxOdometerEntry.Liters;
-                        } else {
-                            // Fallback: use all fuel for this vehicle in this month
-                            fuelConsumedForDistance = vehicleData.liters;
-                        }
-                        
-                        monthTotalFuelConsumed += fuelConsumedForDistance;
-                        vehicleData.fuelConsumed = fuelConsumedForDistance;
+                // Group entries by vehicle
+                const vehicleGroups = {};
+                entries.forEach(entry => {
+                    if (!vehicleGroups[entry.VehicleId]) {
+                        vehicleGroups[entry.VehicleId] = [];
                     }
+                    vehicleGroups[entry.VehicleId].push(entry);
                 });
                 
-                month.totalDistance = monthTotalDistance;
-                month.totalFuelConsumed = monthTotalFuelConsumed;
+                let totalDistance = 0;
+                let totalFuelConsumed = 0;
+                let totalFuelPurchased = 0;
+                let totalCost = 0;
+                
+                // Calculate for each vehicle using segment-based approach
+                Object.keys(vehicleGroups).forEach(vehicleId => {
+                    const vehicleEntries = vehicleGroups[vehicleId];
+                    
+                    // Sort entries by date/time ascending (oldest first)
+                    const sortedEntries = vehicleEntries.sort((a, b) => new Date(a.EntryDate) - new Date(b.EntryDate));
+                    
+                    console.log(`\nVehicle ${vehicleId} (${vehicleMap[vehicleId] || 'Unknown'}):`);
+                    console.log('Sorted entries:', sortedEntries.map(e => ({
+                        date: e.EntryDate.substring(0, 16), // Show date and time
+                        odometer: e.Odometer,
+                        liters: e.Liters
+                    })));
+                    
+                    let vehicleDistance = 0;
+                    let vehicleFuelConsumed = 0;
+                    
+                    // Calculate distance per refuel: newer odometer - previous odometer
+                    for (let i = 1; i < sortedEntries.length; i++) {
+                        const currentEntry = sortedEntries[i];
+                        const previousEntry = sortedEntries[i - 1];
+                        
+                        const distanceSegment = currentEntry.Odometer - previousEntry.Odometer;
+                        
+                        if (distanceSegment > 0) {
+                            vehicleDistance += distanceSegment;
+                            // The fuel consumed is from the current entry (fuel used to travel the distance)
+                            vehicleFuelConsumed += currentEntry.Liters;
+                            
+                            console.log(`  Segment ${i}: ${currentEntry.Odometer} - ${previousEntry.Odometer} = ${distanceSegment} km, fuel used: ${currentEntry.Liters} L`);
+                        } else if (distanceSegment < 0) {
+                            console.log(`  Segment ${i}: INVALID - negative distance ${distanceSegment} km (${currentEntry.Odometer} - ${previousEntry.Odometer})`);
+                        } else {
+                            console.log(`  Segment ${i}: No distance change (${currentEntry.Odometer} - ${previousEntry.Odometer} = 0 km)`);
+                        }
+                    }
+                    
+                    // Calculate totals for this vehicle
+                    const vehicleFuelPurchased = vehicleEntries.reduce((sum, e) => sum + e.Liters, 0);
+                    const vehicleCost = vehicleEntries.reduce((sum, e) => sum + e.TotalCost, 0);
+                    
+                    console.log(`  Vehicle totals: ${vehicleDistance} km, ${vehicleFuelConsumed} L consumed, ${vehicleFuelPurchased} L purchased`);
+                    
+                    // Add to overall totals
+                    totalDistance += vehicleDistance;
+                    totalFuelConsumed += vehicleFuelConsumed;
+                    totalFuelPurchased += vehicleFuelPurchased;
+                    totalCost += vehicleCost;
+                });
+                
+                console.log(`\n=== ${periodLabel} TOTALS ===`);
+                console.log(`Total Distance: ${totalDistance} km`);
+                console.log(`Total Fuel Consumed (for distance): ${totalFuelConsumed} L`);
+                console.log(`Total Fuel Purchased: ${totalFuelPurchased} L`);
+                console.log(`Total Cost: ${totalCost}`);
+                
+                // Calculate efficiency
+                let efficiency = 0;
+                if (totalDistance > 0 && totalFuelConsumed > 0) {
+                    efficiency = totalDistance / totalFuelConsumed;
+                    console.log(`Efficiency: ${totalDistance} ÷ ${totalFuelConsumed} = ${efficiency.toFixed(2)} KM/L`);
+                } else {
+                    console.log('Cannot calculate efficiency - insufficient data');
+                }
+                
+                return {
+                    totalDistance,
+                    totalFuelConsumed,
+                    totalFuelPurchased,
+                    totalCost,
+                    efficiency
+                };
+            }
+            
+            // Determine grouping strategy based on period
+            let groupedData = {};
+            
+            if (period === 'month' || period === 'year') {
+                // Group by month for chart display
+                entries.forEach(entry => {
+                    const date = new Date(entry.EntryDate);
+                    const monthYear = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+                    
+                    if (!groupedData[monthYear]) {
+                        groupedData[monthYear] = [];
+                    }
+                    groupedData[monthYear].push(entry);
+                });
+            } else {
+                // Custom period - treat as single group
+                groupedData['custom'] = entries;
+            }
+            
+            // Calculate efficiency for each group
+            const monthlyData = {};
+            Object.keys(groupedData).forEach(groupKey => {
+                const groupEntries = groupedData[groupKey];
+                const result = calculateEfficiencyForPeriod(groupEntries, groupKey);
+                
+                monthlyData[groupKey] = {
+                    totalLiters: result.totalFuelPurchased,
+                    totalCost: result.totalCost,
+                    totalDistance: result.totalDistance,
+                    totalFuelConsumed: result.totalFuelConsumed,
+                    efficiency: result.efficiency
+                };
             });
             
             // Prepare data for charts
             const months = Object.keys(monthlyData).sort();
             
-            // Calculate average efficiency using standard formula: Total Distance ÷ Total Fuel Consumed
+            // Generate efficiency data from calculated results
             const efficiencyData = months.map(month => {
                 const data = monthlyData[month];
-                
-                if (data.totalDistance <= 0 || data.totalFuelConsumed <= 0) {
-                    console.log(`=== SKIPPING ${month} - NO DATA ===`);
-                    console.log('Total distance:', data.totalDistance, 'km');
-                    console.log('Total fuel consumed:', data.totalFuelConsumed, 'L');
-                    return 0;
-                }
-                
-                // Standard formula: Average Efficiency = Total Distance ÷ Total Fuel Consumed
-                const averageEfficiency = data.totalDistance / data.totalFuelConsumed;
-                
-                console.log(`=== EFFICIENCY CALCULATION FOR ${month} ===`);
-                console.log('Total fuel purchased for month:', data.totalLiters, 'L');
-                console.log('Total fuel consumed for month:', data.totalFuelConsumed, 'L');
-                console.log('Total distance for month:', data.totalDistance, 'km');
-                console.log('Average efficiency:', averageEfficiency.toFixed(2), 'KM/L');
-                console.log('Formula used: Total Distance ÷ Total Fuel Consumed =', data.totalDistance, '÷', data.totalFuelConsumed, '=', averageEfficiency.toFixed(2));
-                
-                // Show individual vehicle contributions for debugging
-                Object.keys(data.vehicles).forEach(vehicleId => {
-                    const vehicleData = data.vehicles[vehicleId];
-                    const distance = vehicleData.distance || 0;
-                          console.log(`Vehicle ${vehicleId} data:`, {
-                    minOdometer: vehicleData.minOdometer,
-                    maxOdometer: vehicleData.maxOdometer,
-                    calculatedDistance: distance + ' km',
-                    litersPurchased: vehicleData.liters + ' L',
-                    fuelConsumed: (vehicleData.fuelConsumed || 0).toFixed(2) + ' L',
-                    individualEfficiency: distance > 0 && vehicleData.fuelConsumed > 0 ? (distance / vehicleData.fuelConsumed).toFixed(2) + ' KM/L' : 'N/A',
-                    entries: vehicleData.entries.map(e => ({
-                        odometer: e.Odometer,
-                        liters: e.Liters,
-                        date: e.EntryDate
-                    }))
-                });
-                });
-                
-                console.log('=== END EFFICIENCY CALCULATION ===');
-                
-                return averageEfficiency;
+                return data.efficiency || 0;
             });
             
             const costData = months.map(month => monthlyData[month].totalCost);
@@ -1860,15 +1914,39 @@ async function refreshToken() {
                 reportConsumptionChart.destroy();
             }
             
+            // Generate appropriate labels based on period type
+            let chartLabels;
+            let xAxisTitle;
+            
+            if (period === 'custom') {
+                // For custom period, show the date range
+                const startDateFormatted = startDate.toLocaleDateString('en-GB', { 
+                    day: '2-digit', 
+                    month: '2-digit', 
+                    year: 'numeric' 
+                });
+                const endDateFormatted = endDate.toLocaleDateString('en-GB', { 
+                    day: '2-digit', 
+                    month: '2-digit', 
+                    year: 'numeric' 
+                });
+                chartLabels = [`${startDateFormatted} to ${endDateFormatted}`];
+                xAxisTitle = 'Date Range';
+            } else {
+                // For month/year periods, show month-year format
+                chartLabels = months.map(m => {
+                    const [year, month] = m.split('-');
+                    const date = new Date(year, month - 1);
+                    return `${String(date.getMonth() + 1).padStart(2, '0')}-${year}`;
+                });
+                xAxisTitle = period === 'year' ? 'Month' : 'Period';
+            }
+            
             const consumptionCtx = document.getElementById('report-consumption-chart').getContext('2d');
             reportConsumptionChart = new Chart(consumptionCtx, {
                 type: 'bar',
                 data: {
-                    labels: months.map(m => {
-                        const [year, month] = m.split('-');
-                        const date = new Date(year, month - 1);
-                        return `${String(date.getMonth() + 1).padStart(2, '0')}-${year}`;
-                    }),
+                    labels: chartLabels,
                     datasets: [{
                         label: 'Avg Efficiency (KM/L)',
                         data: efficiencyData,
@@ -1886,7 +1964,7 @@ async function refreshToken() {
                             display: true,
                             title: {
                                 display: true,
-                                text: 'Month'
+                                text: xAxisTitle
                             }
                         },
                         y: {
@@ -1918,11 +1996,7 @@ async function refreshToken() {
             reportCostChart = new Chart(costCtx, {
                 type: 'bar',
                 data: {
-                    labels: months.map(m => {
-                        const [year, month] = m.split('-');
-                        const date = new Date(year, month - 1);
-                        return `${String(date.getMonth() + 1).padStart(2, '0')}-${year}`;
-                    }),
+                    labels: chartLabels,
                     datasets: [{
                         label: 'Total Cost',
                         data: costData,
@@ -1940,7 +2014,7 @@ async function refreshToken() {
                             display: true,
                             title: {
                                 display: true,
-                                text: 'Month'
+                                text: xAxisTitle
                             }
                         },
                         y: {
