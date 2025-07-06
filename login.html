@@ -91,11 +91,24 @@
                 <div id="dashboard-tab" class="content-tab active">
                     <div class="tab-header">
                         <h2>Dashboard</h2>
-                        <div class="vehicle-selector">
-                            <select id="dashboard-vehicle-select">
-                                <option value="">Loading vehicles...</option>
-                            </select>
+                        <div class="dashboard-controls">
+                            <div class="vehicle-selector">
+                                <select id="dashboard-vehicle-select">
+                                    <option value="">Loading vehicles...</option>
+                                </select>
+                            </div>
+                            <button id="refresh-dashboard-btn" class="btn-secondary" title="Refresh Dashboard">
+                                <i class="fas fa-sync-alt"></i> Refresh
+                            </button>
                         </div>
+                    </div>
+                    
+                    <!-- Mobile vehicle selector -->
+                    <div class="mobile-vehicle-selector">
+                        <label for="mobile-dashboard-vehicle-select">Select Vehicle:</label>
+                        <select id="mobile-dashboard-vehicle-select">
+                            <option value="">Loading vehicles...</option>
+                        </select>
                     </div>
                     
                     <div class="stats-grid">

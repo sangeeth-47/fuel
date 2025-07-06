@@ -6,6 +6,7 @@ document.addEventListener('DOMContentLoaded', function() {
     let consumptionChart = null;
     let reportConsumptionChart = null;
     let reportCostChart = null;
+    let dashboardLoaded = false; // Track if dashboard has been loaded
     
     // API configuration
     const apiBaseUrl = 'https://sangeeth2314105883websitecounter.azurewebsites.net/api';
@@ -282,6 +283,14 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 });
+        
+        // Dashboard refresh button
+        const refreshDashboardBtn = document.getElementById('refresh-dashboard-btn');
+        if (refreshDashboardBtn) {
+            refreshDashboardBtn.addEventListener('click', function() {
+                refreshDashboard();
+            });
+        }
     }
     
     // Auth functions
@@ -459,6 +468,7 @@ async function refreshToken() {
     function handleLogout() {
         currentUser = null;
         authToken = null;
+        dashboardLoaded = false; // Reset dashboard loaded flag
         localStorage.removeItem('fuelTrackerUser');
         localStorage.removeItem('fuelTrackerToken');
         showAuthScreen();
@@ -503,7 +513,10 @@ async function refreshToken() {
         
         // Load data for the tab if needed
         if (tabName === 'dashboard') {
-            loadDashboard();
+            // Only load dashboard data if it hasn't been loaded yet
+            if (!dashboardLoaded) {
+                loadDashboard();
+            }
         } else if (tabName === 'add-entry') {
             // Set current date and time when switching to add entry tab
             setCurrentDateTime();
@@ -623,9 +636,14 @@ async function refreshToken() {
             
             // If user has vehicles, load stats for the first one and set it as selected
             if (userVehicles.length > 0) {
-                // Get the updated dashboard select element after populateVehicleSelectors
+                // Get the updated dashboard select elements after populateVehicleSelectors
                 const dashboardSelect = document.getElementById('dashboard-vehicle-select');
+                const mobileDashboardSelect = document.getElementById('mobile-dashboard-vehicle-select');
+                
+                // Set both selectors to the first vehicle
                 dashboardSelect.value = userVehicles[0].VehicleId;
+                mobileDashboardSelect.value = userVehicles[0].VehicleId;
+                
                 await loadVehicleStats(userVehicles[0].VehicleId);
             } else {
                 // Show empty state
@@ -662,6 +680,10 @@ async function refreshToken() {
                     }
                 });
             }
+            
+            // Mark dashboard as loaded
+            dashboardLoaded = true;
+            
         } catch (error) {
             showToast(error.message, 'error');
         } finally {
@@ -669,18 +691,29 @@ async function refreshToken() {
         }
     }
     
+    // Function to refresh dashboard data
+    async function refreshDashboard() {
+        // Reset the loaded flag to force a reload
+        dashboardLoaded = false;
+        await loadDashboard();
+        showToast('Dashboard refreshed successfully', 'success');
+    }
+    
     function populateVehicleSelectors() {
         const dashboardSelect = document.getElementById('dashboard-vehicle-select');
+        const mobileDashboardSelect = document.getElementById('mobile-dashboard-vehicle-select');
         const entrySelect = document.getElementById('entry-vehicle');
         const reportSelect = document.getElementById('report-vehicle-select');
         
         // Clear existing options
         dashboardSelect.innerHTML = '';
+        mobileDashboardSelect.innerHTML = '';
         entrySelect.innerHTML = '<option value="">Select a vehicle</option>';
         reportSelect.innerHTML = '<option value="">All Vehicles</option>';
         
         if (userVehicles.length === 0) {
             dashboardSelect.innerHTML = '<option value="">No vehicles found</option>';
+            mobileDashboardSelect.innerHTML = '<option value="">No vehicles found</option>';
             return;
         }
         
@@ -690,6 +723,7 @@ async function refreshToken() {
             option.textContent = `${vehicle.Make} ${vehicle.Model}${vehicle.Year ? ` (${vehicle.Year})` : ''}`;
             
             dashboardSelect.appendChild(option.cloneNode(true));
+            mobileDashboardSelect.appendChild(option.cloneNode(true));
             entrySelect.appendChild(option.cloneNode(true));
             reportSelect.appendChild(option.cloneNode(true));
         });
@@ -698,13 +732,34 @@ async function refreshToken() {
         const newDashboardSelect = dashboardSelect.cloneNode(true);
         dashboardSelect.parentNode.replaceChild(newDashboardSelect, dashboardSelect);
         
-        // Update the reference to point to the new element
-        const updatedDashboardSelect = document.getElementById('dashboard-vehicle-select');
+        const newMobileDashboardSelect = mobileDashboardSelect.cloneNode(true);
+        mobileDashboardSelect.parentNode.replaceChild(newMobileDashboardSelect, mobileDashboardSelect);
         
-        // Add event listener to the new dashboard vehicle selector
+        // Update the reference to point to the new elements
+        const updatedDashboardSelect = document.getElementById('dashboard-vehicle-select');
+        const updatedMobileDashboardSelect = document.getElementById('mobile-dashboard-vehicle-select');
+        
+        // Add event listener to the desktop dashboard vehicle selector
         updatedDashboardSelect.addEventListener('change', function() {
-            console.log('Vehicle selected:', this.value);
+            console.log('Desktop vehicle selected:', this.value);
             console.log('Available vehicles:', userVehicles.map(v => `${v.VehicleId}: ${v.Make} ${v.Model}`));
+            
+            // Sync with mobile selector
+            updatedMobileDashboardSelect.value = this.value;
+            
+            if (this.value) {
+                loadVehicleStats(this.value);
+            }
+        });
+        
+        // Add event listener to the mobile dashboard vehicle selector
+        updatedMobileDashboardSelect.addEventListener('change', function() {
+            console.log('Mobile vehicle selected:', this.value);
+            console.log('Available vehicles:', userVehicles.map(v => `${v.VehicleId}: ${v.Make} ${v.Model}`));
+            
+            // Sync with desktop selector
+            updatedDashboardSelect.value = this.value;
+            
             if (this.value) {
                 loadVehicleStats(this.value);
             }
@@ -2265,6 +2320,7 @@ async function handleAddVehicle(e) {
         const data = await response.json();
         showToast('Vehicle added successfully', 'success');
         hideAddVehicleModal();
+        dashboardLoaded = false; // Reset dashboard loaded flag so it refreshes with new vehicle
         await loadUserVehicles();
 
     } catch (error) {
@@ -2570,6 +2626,7 @@ document.addEventListener('DOMContentLoaded', initVehicleModal);
             console.log('Delete successful:', result);
             
             showToast('Vehicle deleted successfully', 'success');
+            dashboardLoaded = false; // Reset dashboard loaded flag so it refreshes after vehicle deletion
             await loadUserVehicles();
             
             // Update vehicle selectors
