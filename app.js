@@ -949,8 +949,20 @@ async function refreshToken() {
                     responsive: true,
                     maintainAspectRatio: false,
                     scales: {
+                        x: {
+                            type: 'category',
+                            display: true,
+                            title: {
+                                display: true,
+                                text: 'Date'
+                            }
+                        },
                         y: {
-                            beginAtZero: false
+                            beginAtZero: false,
+                            title: {
+                                display: true,
+                                text: 'Kilometers per Liter (KM/L)'
+                            }
                         }
                     },
                     plugins: {
@@ -1040,11 +1052,29 @@ async function refreshToken() {
         }
         
         // Update consumption chart - convert L/100km to KM/L
-        const labels = data.stats.consumptionData.map(item => 
+        // Sort consumption data by date to ensure proper chronological order (oldest to newest)
+        // Use more robust date parsing to handle various date formats
+        const sortedConsumptionData = [...data.stats.consumptionData].sort((a, b) => {
+            const dateA = new Date(a.date);
+            const dateB = new Date(b.date);
+            console.log(`Comparing dates: ${a.date} (${dateA.toISOString()}) vs ${b.date} (${dateB.toISOString()})`);
+            return dateA - dateB;
+        });
+        
+        // Debug: Log the sorted data to verify order
+        console.log('=== CONSUMPTION DATA SORTING DEBUG ===');
+        console.log('Original data:', data.stats.consumptionData.map(item => ({ date: item.date, consumption: item.consumption })));
+        console.log('Sorted data:', sortedConsumptionData.map(item => ({ date: item.date, consumption: item.consumption })));
+        
+        // Use formatted dates for labels to ensure proper display
+        const labels = sortedConsumptionData.map(item => 
             formatDate(item.date)
         );
+        console.log('Chart labels in order:', labels);
+        console.log('=== END SORTING DEBUG ===');
+        
         // Convert from L/100km to KM/L: KM/L = 100 / (L/100km)
-        const efficiencyData = data.stats.consumptionData.map(item => 
+        const efficiencyData = sortedConsumptionData.map(item => 
             item.consumption > 0 ? (100 / item.consumption).toFixed(2) : 0
         );
         
@@ -1060,18 +1090,23 @@ async function refreshToken() {
                 const entryDate = formatDate(entry.EntryDate);
                 fuelEntryLabels.push(entryDate);
                 
-                // For fuel entries, we'll show them at a consistent height for visibility
-                // but we could also calculate efficiency if we have previous entry data
-                fuelEntryData.push({
-                    x: entryDate,
-                    y: entry.IsFullTank ? 1 : 0.5, // Different heights for full vs partial tank
-                    liters: entry.Liters,
-                    cost: entry.TotalCost,
-                    isFullTank: entry.IsFullTank,
-                    odometer: entry.Odometer
-                });
+                // Only add fuel entry points if their date exists in our consumption chart labels
+                // This prevents extra dates from being added to the chart
+                if (labels.includes(entryDate)) {
+                    fuelEntryData.push({
+                        x: entryDate,
+                        y: entry.IsFullTank ? 1 : 0.5, // Different heights for full vs partial tank
+                        liters: entry.Liters,
+                        cost: entry.TotalCost,
+                        isFullTank: entry.IsFullTank,
+                        odometer: entry.Odometer
+                    });
+                }
             });
         }
+        
+        console.log('Fuel entry labels:', fuelEntryLabels);
+        console.log('Filtered fuel entry data:', fuelEntryData.map(f => f.x));
         
         if (consumptionChart) {
             consumptionChart.destroy();
@@ -1136,6 +1171,14 @@ async function refreshToken() {
                     intersect: true,
                 },
                 scales: {
+                    x: {
+                        type: 'category',
+                        display: true,
+                        title: {
+                            display: true,
+                            text: 'Date'
+                        }
+                    },
                     y: {
                         type: 'linear',
                         display: true,
@@ -1360,9 +1403,24 @@ async function refreshToken() {
         const isFullTank = document.getElementById('entry-full-tank').checked;
         const notes = document.getElementById('entry-notes').value;
         
+        // Convert the date to properly preserve local time
+        let entryDate = date;
+        if (date) {
+            // Parse the date as local time and format it as ISO string with local timezone
+            const localDate = new Date(date);
+            if (!isNaN(localDate.getTime())) {
+                // Create ISO string but keep it as local time by adjusting for timezone offset
+                const offsetMs = localDate.getTimezoneOffset() * 60000;
+                const localISOTime = new Date(localDate.getTime() - offsetMs).toISOString();
+                entryDate = localISOTime;
+                console.log(`Date conversion for backend: "${date}" -> "${entryDate}"`);
+            }
+        }
+        
         console.log('Form Values:', {
             vehicleId,
             date,
+            entryDate,
             odometer,
             liters,
             pricePerLiter,
@@ -1430,7 +1488,7 @@ async function refreshToken() {
                     totalCost: totalCost || (liters * pricePerLiter), // Use form value or calculate
                     isFullTank,
                     notes,
-                    entryDate: date
+                    entryDate: entryDate
                 })
             });
             
@@ -1682,6 +1740,14 @@ async function refreshToken() {
                     responsive: true,
                     maintainAspectRatio: false,
                     scales: {
+                        x: {
+                            type: 'category',
+                            display: true,
+                            title: {
+                                display: true,
+                                text: 'Month'
+                            }
+                        },
                         y: {
                             beginAtZero: true,
                             title: {
@@ -1728,8 +1794,20 @@ async function refreshToken() {
                     responsive: true,
                     maintainAspectRatio: false,
                     scales: {
+                        x: {
+                            type: 'category',
+                            display: true,
+                            title: {
+                                display: true,
+                                text: 'Month'
+                            }
+                        },
                         y: {
-                            beginAtZero: true
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: 'Total Cost'
+                            }
                         }
                     }
                 }
@@ -2128,13 +2206,42 @@ async function handleAddVehicle(e) {
 
 // Helper function to format dates as dd-mm-yyyy hh:mm
 function formatDateTime(dateString) {
-    const date = new Date(dateString);
+    // Handle the date conversion more carefully to preserve local timezone
+    let date;
     
+    // If the dateString looks like it's already in ISO format with Z (UTC), 
+    // we need to convert it back to local time interpretation
+    if (typeof dateString === 'string' && dateString.includes('T') && dateString.includes('Z')) {
+        // This is a UTC timestamp, but we want to display it as if it were local time
+        // because the user originally entered it as local time
+        const utcDate = new Date(dateString);
+        // Add back the timezone offset to get back to the original local time
+        const offsetMs = utcDate.getTimezoneOffset() * 60000;
+        date = new Date(utcDate.getTime() + offsetMs);
+    } else if (typeof dateString === 'string' && dateString.includes('T') && !dateString.includes('Z')) {
+        // This might be a local timestamp without timezone info
+        // Treat it as local time
+        date = new Date(dateString);
+    } else {
+        // Fallback for other formats
+        date = new Date(dateString);
+    }
+    
+    // Ensure we have a valid date
+    if (isNaN(date.getTime())) {
+        console.warn('Invalid date string:', dateString);
+        return 'Invalid Date';
+    }
+    
+    // Use local time methods to get the components
     const day = String(date.getDate()).padStart(2, '0');
     const month = String(date.getMonth() + 1).padStart(2, '0');
     const year = date.getFullYear();
     const hours = String(date.getHours()).padStart(2, '0');
     const minutes = String(date.getMinutes()).padStart(2, '0');
+    
+    // Debug log to help troubleshoot timezone issues
+    console.log(`Date conversion: "${dateString}" -> "${day}-${month}-${year} ${hours}:${minutes}" (Original: ${new Date(dateString).toLocaleString()}, Adjusted: ${date.toLocaleString()})`);
     
     // Check if screen is mobile size (this is approximate)
     const isMobile = window.innerWidth <= 768;
@@ -2150,8 +2257,33 @@ function formatDateTime(dateString) {
 
 // Helper function to format dates as dd-mm-yyyy (without time)
 function formatDate(dateString) {
-    const date = new Date(dateString);
+    // Handle the date conversion more carefully to preserve local timezone
+    let date;
     
+    // If the dateString looks like it's already in ISO format with Z (UTC), 
+    // we need to convert it back to local time interpretation
+    if (typeof dateString === 'string' && dateString.includes('T') && dateString.includes('Z')) {
+        // This is a UTC timestamp, but we want to display it as if it were local time
+        // because the user originally entered it as local time
+        const utcDate = new Date(dateString);
+        // Add back the timezone offset to get back to the original local time
+        const offsetMs = utcDate.getTimezoneOffset() * 60000;
+        date = new Date(utcDate.getTime() + offsetMs);
+    } else if (typeof dateString === 'string' && dateString.includes('T') && !dateString.includes('Z')) {
+        // This might be a local timestamp without timezone info
+        date = new Date(dateString);
+    } else {
+        // Fallback for other formats
+        date = new Date(dateString);
+    }
+    
+    // Ensure we have a valid date
+    if (isNaN(date.getTime())) {
+        console.warn('Invalid date string:', dateString);
+        return 'Invalid Date';
+    }
+    
+    // Use local time methods to get the components
     const day = String(date.getDate()).padStart(2, '0');
     const month = String(date.getMonth() + 1).padStart(2, '0');
     const year = date.getFullYear();
