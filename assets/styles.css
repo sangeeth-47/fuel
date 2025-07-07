@@ -1922,4 +1922,6 @@ label:has(input[type="checkbox"]) {
       color: #000000;
       text-align: center;
       cursor: context-menu;
+      z-index: 1;
+      text-decoration: none;
     }
