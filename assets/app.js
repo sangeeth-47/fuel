@@ -162,18 +162,59 @@ document.addEventListener('DOMContentLoaded', function() {
                     
                     const liters = parseFloat(litersInput.value) || 0;
                     const price = parseFloat(priceInput.value) || 0;
+                    const total = parseFloat(totalInput.value) || 0;
                     
-                    // Calculate total immediately when both values are available
+                    // Only auto-calculate if we have both liters AND price
                     if (liters > 0 && price > 0) {
                         isCalculating = true;
                         const calculatedTotal = (liters * price).toFixed(2);
                         console.log(`Auto-calculating total: ${liters} × ${price} = ${calculatedTotal}`);
                         totalInput.value = calculatedTotal;
+                        // Add visual feedback to show calculation occurred
+                        totalInput.style.backgroundColor = '#e8f5e8';
+                        setTimeout(() => {
+                            totalInput.style.backgroundColor = '';
+                        }, 1000);
                         isCalculating = false;
-                    } else if (liters === 0 || price === 0) {
-                        // Clear total if one of the values is cleared
-                        if (!userIsEditingTotal) {
-                            totalInput.value = '';
+                    } 
+                    // If we have total and one of the inputs, calculate the missing value
+                    else if (total > 0) {
+                        isCalculating = true;
+                        if (liters > 0 && price === 0) {
+                            // Calculate price when total and liters are available
+                            const calculatedPrice = (total / liters).toFixed(3);
+                            priceInput.value = calculatedPrice;
+                            console.log(`Auto-calculating price: ${total} ÷ ${liters} = ${calculatedPrice}`);
+                            // Add visual feedback
+                            priceInput.style.backgroundColor = '#e8f5e8';
+                            setTimeout(() => {
+                                priceInput.style.backgroundColor = '';
+                            }, 1000);
+                        } else if (price > 0 && liters === 0) {
+                            // Calculate liters when total and price are available
+                            const calculatedLiters = (total / price).toFixed(2);
+                            litersInput.value = calculatedLiters;
+                            console.log(`Auto-calculating liters: ${total} ÷ ${price} = ${calculatedLiters}`);
+                            // Add visual feedback
+                            litersInput.style.backgroundColor = '#e8f5e8';
+                            setTimeout(() => {
+                                litersInput.style.backgroundColor = '';
+                            }, 1000);
+                        }
+                        isCalculating = false;
+                    }
+                    // Don't clear anything if we're just typing in fields
+                });
+                
+                // Add Enter key support for immediate calculation
+                input.addEventListener('keypress', function(e) {
+                    if (e.key === 'Enter') {
+                        this.blur(); // Trigger blur event which may trigger calculations
+                        // Focus next logical field
+                        if (this === litersInput && priceInput.value === '') {
+                            priceInput.focus();
+                        } else if (this === priceInput && totalInput.value === '') {
+                            totalInput.focus();
                         }
                     }
                 });
@@ -188,17 +229,19 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (isCalculating) return;
                 
                 lastModified = 'total';
+                userIsEditingTotal = true;
                 
                 // Clear any existing timeout
                 if (totalInputTimeout) {
                     clearTimeout(totalInputTimeout);
                 }
                 
-                // Set a very short delay for immediate feedback
+                // Only start calculation after user stops typing for a moment
                 totalInputTimeout = setTimeout(() => {
-                    if (!userIsEditingTotal) return; // Only calculate if user is actively editing
-                    performTotalCalculation();
-                }, 300); // 300ms for immediate feel
+                    if (userIsEditingTotal) {
+                        performTotalCalculation();
+                    }
+                }, 800); // Increased delay to prevent interference while typing
             });
             
             // When user starts editing the total field
@@ -212,50 +255,114 @@ document.addEventListener('DOMContentLoaded', function() {
             // When user finishes editing the total field
             totalInput.addEventListener('blur', function() {
                 userIsEditingTotal = false;
-                performTotalCalculation();
+                if (totalInputTimeout) {
+                    clearTimeout(totalInputTimeout);
+                }
+                // Only perform calculation on blur, not during typing
+                setTimeout(() => {
+                    if (!userIsEditingTotal) {
+                        performTotalCalculation();
+                    }
+                }, 100);
             });
             
             // Also listen for Enter key to trigger calculation
             totalInput.addEventListener('keypress', function(e) {
                 if (e.key === 'Enter') {
-                    this.blur(); // This will trigger the blur event and calculation
+                    userIsEditingTotal = false;
+                    if (totalInputTimeout) {
+                        clearTimeout(totalInputTimeout);
+                    }
+                    performTotalCalculation();
+                    this.blur(); // Remove focus to complete the edit
                 }
             });
             
             function performTotalCalculation() {
-                if (isCalculating || userIsEditingTotal) return; // Prevent recursive calculations
-                
-                lastModified = 'total';
+                if (isCalculating) return; // Prevent recursive calculations
                 
                 const total = parseFloat(totalInput.value) || 0;
                 const liters = parseFloat(litersInput.value) || 0;
                 const price = parseFloat(priceInput.value) || 0;
                 
+                // Only perform calculation if we have a valid total amount
                 if (total > 0) {
                     isCalculating = true;
                     
                     // If liters is filled but price is empty, calculate price per liter
                     if (liters > 0 && price === 0) {
-                        priceInput.value = (total / liters).toFixed(2);
+                        const calculatedPrice = (total / liters).toFixed(3);
+                        priceInput.value = calculatedPrice;
+                        // Visual feedback
+                        priceInput.style.backgroundColor = '#e8f5e8';
+                        setTimeout(() => {
+                            priceInput.style.backgroundColor = '';
+                        }, 1000);
+                        console.log(`Auto-calculated price per liter: ${total} ÷ ${liters} = ${calculatedPrice}`);
                     }
                     // If price is filled but liters is empty, calculate liters
                     else if (price > 0 && liters === 0) {
-                        litersInput.value = (total / price).toFixed(2);
+                        const calculatedLiters = (total / price).toFixed(2);
+                        litersInput.value = calculatedLiters;
+                        // Visual feedback
+                        litersInput.style.backgroundColor = '#e8f5e8';
+                        setTimeout(() => {
+                            litersInput.style.backgroundColor = '';
+                        }, 1000);
+                        console.log(`Auto-calculated liters: ${total} ÷ ${price} = ${calculatedLiters}`);
                     }
                     // If both liters and price are filled, determine which one to update
                     // based on which was modified last (before total)
                     else if (liters > 0 && price > 0) {
-                        // If user was working with liters last, update price
-                        if (lastModified === 'liters') {
-                            priceInput.value = (total / liters).toFixed(2);
+                        const expectedTotal = (liters * price).toFixed(2);
+                        const totalDifference = Math.abs(total - expectedTotal);
+                        
+                        // Only update if there's a significant difference (more than 0.01)
+                        if (totalDifference > 0.01) {
+                            // If user was working with liters last, update price
+                            if (lastModified === 'liters') {
+                                const calculatedPrice = (total / liters).toFixed(3);
+                                priceInput.value = calculatedPrice;
+                                // Visual feedback
+                                priceInput.style.backgroundColor = '#fff3cd';
+                                setTimeout(() => {
+                                    priceInput.style.backgroundColor = '';
+                                }, 1000);
+                                console.log(`Updated price per liter based on total: ${total} ÷ ${liters} = ${calculatedPrice}`);
+                            }
+                            // If user was working with price last, update liters
+                            else if (lastModified === 'price') {
+                                const calculatedLiters = (total / price).toFixed(2);
+                                litersInput.value = calculatedLiters;
+                                // Visual feedback
+                                litersInput.style.backgroundColor = '#fff3cd';
+                                setTimeout(() => {
+                                    litersInput.style.backgroundColor = '';
+                                }, 1000);
+                                console.log(`Updated liters based on total: ${total} ÷ ${price} = ${calculatedLiters}`);
+                            }
+                            // Default: update price per liter (more common scenario)
+                            else {
+                                const calculatedPrice = (total / liters).toFixed(3);
+                                priceInput.value = calculatedPrice;
+                                // Visual feedback
+                                priceInput.style.backgroundColor = '#fff3cd';
+                                setTimeout(() => {
+                                    priceInput.style.backgroundColor = '';
+                                }, 1000);
+                                console.log(`Default updated price per liter: ${total} ÷ ${liters} = ${calculatedPrice}`);
+                            }
                         }
-                        // If user was working with price last, update liters
-                        else if (lastModified === 'price') {
-                            litersInput.value = (total / price).toFixed(2);
-                        }
-                        // Default: update price per liter (more common scenario)
-                        else {
-                            priceInput.value = (total / liters).toFixed(2);
+                    }
+                    // If neither liters nor price is filled, show helper message
+                    else if (liters === 0 && price === 0) {
+                        console.log('Need either liters or price per liter to calculate the missing value');
+                        // Show a subtle hint to help user understand what to fill
+                        const hintText = 'Enter either liters or price per liter to auto-calculate the missing value';
+                        if (window.showToast) {
+                            showToast(hintText, 'info');
+                        } else {
+                            console.log(hintText);
                         }
                     }
                     
