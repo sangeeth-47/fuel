@@ -1160,9 +1160,15 @@ table tr:hover {
 }
 
 /* Reports */
-/* Reports tab header - align title to left with proper spacing */
+/* Reports tab header - center title with proper spacing */
 #reports-tab .tab-header h2 {
-    text-align: left;
+    text-align: center;
+    margin-right: 2rem;
+}
+
+/* Service History tab header - center title with proper spacing */
+#service-history-tab .tab-header h2 {
+    text-align: center;
     margin-right: 2rem;
 }
 
@@ -1634,6 +1640,14 @@ table tr:hover {
         align-items: center;
     }
     
+    /* Mobile header centering for Reports and Service History */
+    #reports-tab .tab-header h2,
+    #service-history-tab .tab-header h2 {
+        text-align: center;
+        margin-right: 0;
+        width: 100%;
+    }
+    
     .tab-header .vehicle-selector {
         position: static;
         width: 100%;
@@ -2102,6 +2116,18 @@ label:has(input[type="checkbox"]) {
         gap: 1rem;
         align-items: stretch;
     }
+    
+    /* Service history table buttons on mobile */
+    .btn-view-service,
+    .btn-delete-service {
+        width: 28px;
+        height: 28px;
+        font-size: 0.7rem;
+    }
+    
+    .btn-view-service {
+        margin-right: 0.125rem;
+    }
 }
 
 /* Enhanced button styles for service section */
@@ -2209,18 +2235,29 @@ label:has(input[type="checkbox"]) {
 
 #service-history-table td:last-child {
     text-align: center;
+    white-space: nowrap;
+    vertical-align: middle;
+}
+
+.btn-view-service,
+.btn-delete-service {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.8rem;
+    transition: var(--transition);
+    vertical-align: middle;
 }
 
 .btn-view-service {
     background: var(--primary-color);
     color: white;
-    border: none;
-    padding: 0.25rem 0.5rem;
-    border-radius: 4px;
-    cursor: pointer;
-    font-size: 0.8rem;
     margin-right: 0.25rem;
-    transition: var(--transition);
 }
 
 .btn-view-service:hover {
@@ -2230,12 +2267,6 @@ label:has(input[type="checkbox"]) {
 .btn-delete-service {
     background: var(--danger-color);
     color: white;
-    border: none;
-    padding: 0.25rem 0.5rem;
-    border-radius: 4px;
-    cursor: pointer;
-    font-size: 0.8rem;
-    transition: var(--transition);
 }
 
 .btn-delete-service:hover {

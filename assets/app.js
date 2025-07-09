@@ -3215,10 +3215,13 @@ async function refreshToken() {
     
     async function viewServiceDetails(serviceId) {
         try {
+            showLoading();
+            
             const token = localStorage.getItem('fuelTrackerToken');
             const userData = JSON.parse(localStorage.getItem('fuelTrackerUser') || '{}');
             
             if (!token || !userData.userId) {
+                hideLoading();
                 showToast('Please log in again', 'error');
                 handleLogout();
                 return;
@@ -3233,6 +3236,7 @@ async function refreshToken() {
             });
             
             if (!response.ok) {
+                hideLoading();
                 throw new Error('Failed to load service details');
             }
             
@@ -3240,13 +3244,16 @@ async function refreshToken() {
             const serviceRecord = data.services.find(item => item.ServiceId === serviceId);
             
             if (!serviceRecord) {
+                hideLoading();
                 showToast('Service record not found', 'error');
                 return;
             }
             
+            hideLoading();
             showServiceDetailsModal(serviceRecord);
             
         } catch (error) {
+            hideLoading();
             console.error('View service details error:', error);
             showToast(error.message, 'error');
         }
