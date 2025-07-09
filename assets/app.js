@@ -2798,6 +2798,7 @@ async function refreshToken() {
         const vehicleId = document.getElementById('service-vehicle').value;
         const serviceDate = document.getElementById('service-date').value;
         const serviceType = document.getElementById('service-type').value;
+        const billNumber = document.getElementById('service-bill-number').value;
         const odometer = parseFloat(document.getElementById('service-odometer').value) || null;
         const laborCost = parseFloat(document.getElementById('labor-cost').value) || 0;
         const totalServiceCost = parseFloat(document.getElementById('total-service-cost').value);
@@ -2846,6 +2847,7 @@ async function refreshToken() {
                 vehicleId: vehicleId,
                 serviceDate: serviceDate,
                 serviceType: serviceType,
+                billNumber: billNumber,
                 odometer: odometer,
                 laborCost: laborCost,
                 totalServiceCost: totalServiceCost,
@@ -3103,7 +3105,7 @@ async function refreshToken() {
         
         if (serviceRecords.length === 0) {
             const row = document.createElement('tr');
-            row.innerHTML = '<td colspan="8">No service records found. Add your first service record to get started.</td>';
+            row.innerHTML = '<td colspan="9">No service records found. Add your first service record to get started.</td>';
             tbody.appendChild(row);
             return;
         }
@@ -3130,6 +3132,7 @@ async function refreshToken() {
                 <td>${formatDate(record.ServiceDate)}</td>
                 <td>${vehicleMap[record.VehicleId] || record.Make + ' ' + record.Model || 'Unknown'}</td>
                 <td>${record.ServiceType}</td>
+                <td>${record.BillNumber || '--'}</td>
                 <td>${record.Odometer ? record.Odometer.toFixed(1) : '--'}</td>
                 <td>${partsTotal.toFixed(2)}</td>
                 <td>${record.LaborCost ? record.LaborCost.toFixed(2) : '0.00'}</td>
@@ -3286,6 +3289,13 @@ async function refreshToken() {
                     <span class="service-detail-label">Service Date:</span>
                     <span class="service-detail-value">${formatDate(serviceRecord.ServiceDate)}</span>
                 </div>
+                
+                ${serviceRecord.BillNumber ? `
+                <div class="service-detail-item">
+                    <span class="service-detail-label">Bill Number:</span>
+                    <span class="service-detail-value">${serviceRecord.BillNumber}</span>
+                </div>
+                ` : ''}
                 
                 <div class="service-detail-item">
                     <span class="service-detail-label">Odometer:</span>

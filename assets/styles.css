@@ -2239,6 +2239,26 @@ label:has(input[type="checkbox"]) {
     vertical-align: middle;
 }
 
+/* Service history table responsive styling for bill number column */
+#service-history-table th:nth-child(4), 
+#service-history-table td:nth-child(4) {
+    min-width: 100px;
+    max-width: 150px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+@media (max-width: 768px) {
+    /* Hide bill number column on very small screens if needed */
+    #service-history-table th:nth-child(4), 
+    #service-history-table td:nth-child(4) {
+        min-width: 80px;
+        max-width: 100px;
+        font-size: 0.8rem;
+    }
+}
+
 .btn-view-service,
 .btn-delete-service {
     display: inline-flex;
