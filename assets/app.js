@@ -397,6 +397,51 @@ document.addEventListener('DOMContentLoaded', function() {
             passwordForm.addEventListener('submit', handlePasswordChange);
         }
         
+        // Service form
+        const serviceForm = document.getElementById('service-form');
+        if (serviceForm) {
+            serviceForm.addEventListener('submit', handleServiceSubmit);
+            
+            // Set current date for service
+            const serviceDateInput = document.getElementById('service-date');
+            if (serviceDateInput) {
+                serviceDateInput.value = new Date().toISOString().split('T')[0];
+            }
+            
+            // Add consumable button
+            const addConsumableBtn = document.getElementById('add-consumable-btn');
+            if (addConsumableBtn) {
+                addConsumableBtn.addEventListener('click', addConsumableItem);
+            }
+            
+            // Labor cost and total calculation
+            const laborCostInput = document.getElementById('labor-cost');
+            const totalServiceCostInput = document.getElementById('total-service-cost');
+            
+            if (laborCostInput && totalServiceCostInput) {
+                laborCostInput.addEventListener('input', calculateTotalServiceCost);
+                // Also recalculate when consumables change
+                document.addEventListener('consumablesChanged', calculateTotalServiceCost);
+            }
+            
+            // Reset button for service form
+            const serviceResetBtn = serviceForm.querySelector('button[type="reset"]');
+            if (serviceResetBtn) {
+                serviceResetBtn.addEventListener('click', function() {
+                    setTimeout(() => {
+                        // Reset date to today
+                        serviceDateInput.value = new Date().toISOString().split('T')[0];
+                        // Clear consumables and restore placeholder
+                        const consumablesList = document.getElementById('consumables-list');
+                        consumablesList.innerHTML = '<div class="no-consumables"><p>No consumables added yet. Click "Add Item" to add parts and materials used in this service.</p></div>';
+                        // Reset totals
+                        document.getElementById('total-parts-cost').value = '';
+                        calculateTotalServiceCost();
+                    }, 10);
+                });
+            }
+        }
+        
         // Vehicle management - Use event delegation for better reliability
         document.addEventListener('click', function(e) {
             if (e.target.id === 'add-vehicle-btn' || e.target.id === 'add-first-vehicle') {
@@ -436,6 +481,61 @@ document.addEventListener('DOMContentLoaded', function() {
                 refreshDashboard();
             });
         }
+        
+        // Service history vehicle filter
+        const serviceHistoryVehicleSelect = document.getElementById('service-history-vehicle-select');
+        
+        if (serviceHistoryVehicleSelect) {
+            serviceHistoryVehicleSelect.addEventListener('change', function() {
+                // Don't auto-load, just update the selection
+                console.log('Service history vehicle filter changed:', this.value);
+            });
+        }
+        
+        // Date filter controls
+        const generateServiceHistoryBtn = document.getElementById('generate-service-history-btn');
+        const serviceHistoryPeriod = document.getElementById('service-history-period');
+        const serviceCustomRangeControls = document.getElementById('service-custom-range-controls');
+        const serviceStartDate = document.getElementById('service-start-date');
+        const serviceEndDate = document.getElementById('service-end-date');
+        
+        // Handle period selection change
+        if (serviceHistoryPeriod) {
+            serviceHistoryPeriod.addEventListener('change', function() {
+                const period = this.value;
+                if (period === 'custom') {
+                    serviceCustomRangeControls.classList.remove('hidden');
+                    // Set previous month as default for custom range
+                    if (serviceStartDate && serviceEndDate) {
+                        const now = new Date();
+                        const oneMonthAgo = new Date(now.getFullYear(), now.getMonth() - 1, now.getDate());
+                        
+                        // Format dates as YYYY-MM-DD for date inputs
+                        const startDate = oneMonthAgo.toISOString().split('T')[0];
+                        const endDate = now.toISOString().split('T')[0];
+                        
+                        serviceStartDate.value = startDate;
+                        serviceEndDate.value = endDate;
+                        
+                        console.log('Set custom range default to previous month:', { startDate, endDate });
+                    }
+                } else {
+                    serviceCustomRangeControls.classList.add('hidden');
+                    // Clear custom date inputs when not in custom mode
+                    if (serviceStartDate) serviceStartDate.value = '';
+                    if (serviceEndDate) serviceEndDate.value = '';
+                }
+            });
+        }
+        
+        if (generateServiceHistoryBtn) {
+            generateServiceHistoryBtn.addEventListener('click', function() {
+                loadServiceHistory();
+            });
+        }
+        
+        // Remove auto-apply functionality - only apply when Filter button is clicked
+        // Date inputs will not trigger API calls automatically
     }
     
     // Auth functions
@@ -713,6 +813,17 @@ async function refreshToken() {
         } else if (tabName === 'add-entry') {
             // Set current date and time when switching to add entry tab
             setCurrentDateTime();
+        } else if (tabName === 'add-service') {
+            // Load vehicles for service tab and set current date
+            loadVehiclesForService();
+            const serviceDateInput = document.getElementById('service-date');
+            if (serviceDateInput && !serviceDateInput.value) {
+                serviceDateInput.value = new Date().toISOString().split('T')[0];
+            }
+        } else if (tabName === 'service-history') {
+            // Set previous month date range if dates are empty
+            setDefaultServiceDateRange();
+            // Do not auto-load service history - user must click Generate button
         } else if (tabName === 'reports') {
             // Initialize reports tab
         } else if (tabName === 'settings') {
@@ -1006,12 +1117,20 @@ async function refreshToken() {
         const dashboardSelect = document.getElementById('dashboard-vehicle-select');
         const mobileDashboardSelect = document.getElementById('mobile-dashboard-vehicle-select');
         const entrySelect = document.getElementById('entry-vehicle');
+        const serviceSelect = document.getElementById('service-vehicle');
+        const serviceHistorySelect = document.getElementById('service-history-vehicle-select');
         const reportSelect = document.getElementById('report-vehicle-select');
         
         // Clear existing options
         dashboardSelect.innerHTML = '';
         mobileDashboardSelect.innerHTML = '';
         entrySelect.innerHTML = '<option value="">Select a vehicle</option>';
+        if (serviceSelect) {
+            serviceSelect.innerHTML = '<option value="">Select a vehicle</option>';
+        }
+        if (serviceHistorySelect) {
+            serviceHistorySelect.innerHTML = '<option value="">All Vehicles</option>';
+        }
         reportSelect.innerHTML = '<option value="">All Vehicles</option>';
         
         if (userVehicles.length === 0) {
@@ -1028,6 +1147,12 @@ async function refreshToken() {
             dashboardSelect.appendChild(option.cloneNode(true));
             mobileDashboardSelect.appendChild(option.cloneNode(true));
             entrySelect.appendChild(option.cloneNode(true));
+            if (serviceSelect) {
+                serviceSelect.appendChild(option.cloneNode(true));
+            }
+            if (serviceHistorySelect) {
+                serviceHistorySelect.appendChild(option.cloneNode(true));
+            }
             reportSelect.appendChild(option.cloneNode(true));
         });
         
@@ -2492,6 +2617,775 @@ async function refreshToken() {
     window.generateReport = generateReport;
     window.handleAddVehicle = handleAddVehicle;
     window.loadUserVehicles = loadUserVehicles;
+
+    // Service functions
+    function loadVehiclesForService() {
+        const serviceVehicleSelect = document.getElementById('service-vehicle');
+        if (serviceVehicleSelect && userVehicles.length > 0) {
+            serviceVehicleSelect.innerHTML = '<option value="">Select a vehicle</option>';
+            userVehicles.forEach(vehicle => {
+                const option = document.createElement('option');
+                option.value = vehicle.VehicleId;
+                option.textContent = `${vehicle.Make} ${vehicle.Model} (${vehicle.Year})`;
+                serviceVehicleSelect.appendChild(option);
+            });
+        }
+    }
+    
+    function addConsumableItem() {
+        const consumablesList = document.getElementById('consumables-list');
+        
+        // Validate existing consumables before adding a new one
+        const existingItems = consumablesList.querySelectorAll('.consumable-item');
+        let hasEmptyFields = false;
+        
+        existingItems.forEach(item => {
+            const nameInput = item.querySelector('input[id$="-name"]');
+            const quantityInput = item.querySelector('input[id$="-quantity"]');
+            const unitPriceInput = item.querySelector('input[id$="-unit-price"]');
+            
+            // Clear previous error states
+            nameInput.classList.remove('error');
+            quantityInput.classList.remove('error');
+            unitPriceInput.classList.remove('error');
+            
+            // Check if any required fields are empty
+            if (!nameInput.value.trim()) {
+                nameInput.classList.add('error');
+                hasEmptyFields = true;
+            }
+            if (!quantityInput.value || parseFloat(quantityInput.value) <= 0) {
+                quantityInput.classList.add('error');
+                hasEmptyFields = true;
+            }
+            if (!unitPriceInput.value || parseFloat(unitPriceInput.value) < 0) {
+                unitPriceInput.classList.add('error');
+                hasEmptyFields = true;
+            }
+        });
+        
+        // If there are empty fields, show toast and don't add new item
+        if (hasEmptyFields) {
+            showToast('Please fill in all fields for existing consumables before adding a new one', 'error');
+            return;
+        }
+        
+        // Remove no-consumables placeholder if it exists
+        const noConsumables = consumablesList.querySelector('.no-consumables');
+        if (noConsumables) {
+            noConsumables.remove();
+        }
+        
+        const itemId = 'consumable-' + Date.now();
+        
+        const consumableItem = document.createElement('div');
+        consumableItem.className = 'consumable-item';
+        consumableItem.innerHTML = `
+            <div class="form-group">
+                <label for="${itemId}-name">Item Name</label>
+                <input type="text" id="${itemId}-name" placeholder="e.g. Engine Oil, Air Filter..." required>
+            </div>
+            <div class="form-group">
+                <label for="${itemId}-quantity">Quantity</label>
+                <input type="number" id="${itemId}-quantity" step="1" min="1" value="1" required>
+            </div>
+            <div class="form-group">
+                <label for="${itemId}-unit-price">Unit Price</label>
+                <input type="number" id="${itemId}-unit-price" step="0.01" min="0" required>
+            </div>
+            <div class="form-group">
+                <label for="${itemId}-total">Total</label>
+                <input type="number" id="${itemId}-total" step="0.01" min="0" readonly>
+            </div>
+            <button type="button" class="remove-consumable-btn" title="Remove item">
+                <i class="fas fa-trash"></i>
+            </button>
+        `;
+        
+        consumablesList.appendChild(consumableItem);
+        
+        // Add event listeners for calculation
+        const quantityInput = consumableItem.querySelector(`#${itemId}-quantity`);
+        const unitPriceInput = consumableItem.querySelector(`#${itemId}-unit-price`);
+        const totalInput = consumableItem.querySelector(`#${itemId}-total`);
+        const removeBtn = consumableItem.querySelector('.remove-consumable-btn');
+        const nameInput = consumableItem.querySelector(`#${itemId}-name`);
+        
+        // Add event listeners to clear error state when user starts typing
+        [nameInput, quantityInput, unitPriceInput].forEach(input => {
+            input.addEventListener('input', function() {
+                this.classList.remove('error');
+            });
+        });
+        
+        // Calculate item total when quantity or unit price changes
+        [quantityInput, unitPriceInput].forEach(input => {
+            input.addEventListener('input', function() {
+                const quantity = parseFloat(quantityInput.value) || 0;
+                const unitPrice = parseFloat(unitPriceInput.value) || 0;
+                totalInput.value = (quantity * unitPrice).toFixed(2);
+                
+                // Trigger recalculation of total parts cost
+                calculateTotalPartsCost();
+            });
+        });
+        
+        // Remove item functionality
+        removeBtn.addEventListener('click', function() {
+            consumableItem.remove();
+            calculateTotalPartsCost();
+            
+            // Show no-consumables placeholder if no items left
+            const remainingItems = consumablesList.querySelectorAll('.consumable-item');
+            if (remainingItems.length === 0) {
+                const noConsumables = document.createElement('div');
+                noConsumables.className = 'no-consumables';
+                noConsumables.innerHTML = '<p>No consumables added yet. Click "Add Item" to add parts and materials used in this service.</p>';
+                consumablesList.appendChild(noConsumables);
+            }
+        });
+        
+        // Focus on the item name input
+        consumableItem.querySelector(`#${itemId}-name`).focus();
+    }
+    
+    function calculateTotalPartsCost() {
+        const consumableItems = document.querySelectorAll('.consumable-item');
+        let totalPartsCost = 0;
+        
+        consumableItems.forEach(item => {
+            const totalInput = item.querySelector('input[id$="-total"]');
+            if (totalInput && totalInput.value) {
+                totalPartsCost += parseFloat(totalInput.value) || 0;
+            }
+        });
+        
+        const totalPartsCostInput = document.getElementById('total-parts-cost');
+        if (totalPartsCostInput) {
+            totalPartsCostInput.value = totalPartsCost.toFixed(2);
+        }
+        
+        // Trigger total service cost calculation
+        calculateTotalServiceCost();
+        
+        // Dispatch custom event
+        document.dispatchEvent(new CustomEvent('consumablesChanged'));
+    }
+    
+    function calculateTotalServiceCost() {
+        const totalPartsCost = parseFloat(document.getElementById('total-parts-cost').value) || 0;
+        const laborCost = parseFloat(document.getElementById('labor-cost').value) || 0;
+        const totalServiceCostInput = document.getElementById('total-service-cost');
+        
+        // Only auto-calculate if the total service cost is empty or was previously auto-calculated
+        if (totalServiceCostInput && (!totalServiceCostInput.value || totalServiceCostInput.dataset.autoCalculated)) {
+            const totalServiceCost = totalPartsCost + laborCost;
+            if (totalServiceCost > 0) {
+                totalServiceCostInput.value = totalServiceCost.toFixed(2);
+                totalServiceCostInput.dataset.autoCalculated = 'true';
+                // Add visual feedback
+                totalServiceCostInput.style.backgroundColor = '#e8f5e8';
+                setTimeout(() => {
+                    totalServiceCostInput.style.backgroundColor = '';
+                }, 1000);
+            }
+        }
+    }
+    
+    async function handleServiceSubmit(e) {
+        e.preventDefault();
+        
+        const vehicleId = document.getElementById('service-vehicle').value;
+        const serviceDate = document.getElementById('service-date').value;
+        const serviceType = document.getElementById('service-type').value;
+        const odometer = parseFloat(document.getElementById('service-odometer').value) || null;
+        const laborCost = parseFloat(document.getElementById('labor-cost').value) || 0;
+        const totalServiceCost = parseFloat(document.getElementById('total-service-cost').value);
+        const serviceNotes = document.getElementById('service-notes').value;
+        
+        if (!vehicleId || !serviceDate || !serviceType || isNaN(totalServiceCost) || totalServiceCost <= 0) {
+            showToast('Please fill in all required fields', 'error');
+            return;
+        }
+        
+        // Collect consumables data
+        const consumables = [];
+        const consumableItems = document.querySelectorAll('.consumable-item');
+        
+        consumableItems.forEach(item => {
+            const name = item.querySelector('input[id$="-name"]').value;
+            const quantity = parseFloat(item.querySelector('input[id$="-quantity"]').value) || 0;
+            const unitPrice = parseFloat(item.querySelector('input[id$="-unit-price"]').value) || 0;
+            const total = parseFloat(item.querySelector('input[id$="-total"]').value) || 0;
+            
+            if (name.trim() && quantity > 0 && unitPrice >= 0) {
+                consumables.push({
+                    name: name.trim(),
+                    quantity: quantity,
+                    unitPrice: unitPrice,
+                    totalPrice: total
+                });
+            }
+        });
+        
+        try {
+            showLoading();
+            
+            const token = localStorage.getItem('fuelTrackerToken');
+            const userData = JSON.parse(localStorage.getItem('fuelTrackerUser') || '{}');
+            
+            if (!token || !userData.userId) {
+                showToast('Please log in again', 'error');
+                handleLogout();
+                return;
+            }
+            
+            // Use the dedicated service-addService endpoint
+            const serviceData = {
+                userId: userData.userId,
+                vehicleId: vehicleId,
+                serviceDate: serviceDate,
+                serviceType: serviceType,
+                odometer: odometer,
+                laborCost: laborCost,
+                totalServiceCost: totalServiceCost,
+                serviceNotes: serviceNotes,
+                consumables: consumables
+            };
+            
+            // Using dedicated service-addService endpoint
+            const response = await fetch(`${apiBaseUrl}/service-addService`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify(serviceData)
+            });
+            
+            if (response.status === 401) {
+                showToast('Session expired. Please log in again.', 'error');
+                handleLogout();
+                return;
+            }
+            
+            if (!response.ok) {
+                const errorText = await response.text();
+                throw new Error(`Failed to save service record: ${errorText}`);
+            }
+            
+            showToast('Service record saved successfully', 'success');
+            document.getElementById('service-form').reset();
+            
+            // Reset date to today
+            document.getElementById('service-date').value = new Date().toISOString().split('T')[0];
+            
+            // Clear consumables and restore placeholder
+            const consumablesList = document.getElementById('consumables-list');
+            consumablesList.innerHTML = '<div class="no-consumables"><p>No consumables added yet. Click "Add Item" to add parts and materials used in this service.</p></div>';
+            document.getElementById('total-parts-cost').value = '';
+            
+            // Refresh service history if it's loaded
+            const serviceHistoryTable = document.querySelector('#service-history-table tbody');
+            if (serviceHistoryTable) {
+                loadServiceHistory();
+            }
+            
+        } catch (error) {
+            console.error('Service submission error:', error);
+            showToast(error.message, 'error');
+        } finally {
+            hideLoading();
+        }
+    }
+    
+    // Service History functions
+    function setDefaultServiceDateRange() {
+        const serviceHistoryPeriod = document.getElementById('service-history-period');
+        const serviceCustomRangeControls = document.getElementById('service-custom-range-controls');
+        
+        // Set default to "This Month" and hide custom range controls
+        if (serviceHistoryPeriod) {
+            serviceHistoryPeriod.value = 'month';
+        }
+        if (serviceCustomRangeControls) {
+            serviceCustomRangeControls.classList.add('hidden');
+        }
+        
+        console.log('Set default service history period to: This Month');
+    }
+    
+    function getServiceDateRange() {
+        const serviceHistoryPeriod = document.getElementById('service-history-period');
+        const serviceStartDate = document.getElementById('service-start-date');
+        const serviceEndDate = document.getElementById('service-end-date');
+        
+        if (!serviceHistoryPeriod) {
+            return { startDate: '', endDate: '' };
+        }
+        
+        const period = serviceHistoryPeriod.value;
+        let startDate, endDate;
+        
+        if (period === 'month') {
+            // This month
+            startDate = new Date();
+            startDate.setDate(1);
+            startDate.setHours(0, 0, 0, 0);
+            
+            endDate = new Date();
+            endDate.setMonth(endDate.getMonth() + 1, 0); // Last day of current month
+            endDate.setHours(23, 59, 59, 999);
+        } else if (period === 'year') {
+            // This year
+            startDate = new Date();
+            startDate.setMonth(0, 1); // January 1st
+            startDate.setHours(0, 0, 0, 0);
+            
+            endDate = new Date();
+            endDate.setMonth(11, 31); // December 31st
+            endDate.setHours(23, 59, 59, 999);
+        } else if (period === 'custom') {
+            // Custom range from inputs
+            const startDateValue = serviceStartDate ? serviceStartDate.value : '';
+            const endDateValue = serviceEndDate ? serviceEndDate.value : '';
+            
+            if (startDateValue) {
+                startDate = new Date(startDateValue);
+                startDate.setHours(0, 0, 0, 0);
+            }
+            
+            if (endDateValue) {
+                endDate = new Date(endDateValue);
+                endDate.setHours(23, 59, 59, 999);
+            }
+        }
+        
+        return {
+            startDate: startDate ? startDate.toISOString().split('T')[0] : '',
+            endDate: endDate ? endDate.toISOString().split('T')[0] : ''
+        };
+    }
+    
+    async function loadServiceHistory() {
+        try {
+            showLoading();
+            
+            const token = localStorage.getItem('fuelTrackerToken');
+            const userData = JSON.parse(localStorage.getItem('fuelTrackerUser') || '{}');
+            
+            if (!token || !userData.userId) {
+                showToast('Please log in again', 'error');
+                handleLogout();
+                return;
+            }
+            
+            // Get selected vehicle filter
+            const vehicleSelect = document.getElementById('service-history-vehicle-select'); 
+            const selectedVehicleId = vehicleSelect ? vehicleSelect.value : '';
+            
+            // Get date filter values using the new dropdown approach
+            const { startDate, endDate } = getServiceDateRange();
+            
+            // Use the dedicated service-getServices endpoint
+            let url = `${apiBaseUrl}/service-getServices?userId=${userData.userId}`;
+            if (selectedVehicleId) {
+                url += `&vehicleId=${selectedVehicleId}`;
+            }
+            if (startDate) {
+                url += `&startDate=${startDate}`;
+            }
+            if (endDate) {
+                url += `&endDate=${endDate}`;
+            }
+            
+            console.log('Loading service history with filters:', { 
+                vehicleId: selectedVehicleId || 'all', 
+                startDate: startDate || 'none', 
+                endDate: endDate || 'none' 
+            });
+            
+            const response = await fetch(url, {
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                }
+            });
+            
+            if (response.status === 401) {
+                showToast('Session expired. Please log in again.', 'error');
+                handleLogout();
+                return;
+            }
+            
+            if (!response.ok) {
+                const errorText = await response.text();
+                throw new Error(`Failed to load service history: ${errorText}`);
+            }
+            
+            const data = await response.json();
+            const serviceRecords = data.services || [];
+            
+            // Debug: Log the API response
+            console.log('Service history API response:', {
+                dataKeys: Object.keys(data),
+                servicesCount: serviceRecords.length,
+                summary: data.summary,
+                firstService: serviceRecords[0]
+            });
+            
+            // Update service history stats using API summary
+            updateServiceHistoryStats(serviceRecords, data.summary);
+            
+            // Update service history table
+            updateServiceHistoryTable(serviceRecords);
+            
+            // Show filtering status
+            updateFilteringStatus(startDate, endDate, selectedVehicleId);
+            
+        } catch (error) {
+            console.error('Service history loading error:', error);
+            showToast(error.message, 'error');
+        } finally {
+            hideLoading();
+        }
+    }
+    
+    function updateServiceHistoryStats(serviceRecords, summary) {
+        const totalServicesElement = document.getElementById('total-services');
+        const totalServiceCostElement = document.getElementById('total-service-history-cost');
+        const avgServiceCostElement = document.getElementById('avg-service-cost');
+        const lastServiceDateElement = document.getElementById('last-service-date');
+        
+        // Debug: Check if elements exist
+        console.log('Service history elements found:', {
+            totalServices: !!totalServicesElement,
+            totalServiceCost: !!totalServiceCostElement,
+            avgServiceCost: !!avgServiceCostElement,
+            lastServiceDate: !!lastServiceDateElement
+        });
+        
+        if (serviceRecords.length === 0) {
+            if (totalServicesElement) totalServicesElement.textContent = '0';
+            if (totalServiceCostElement) totalServiceCostElement.textContent = '0.00';
+            if (avgServiceCostElement) avgServiceCostElement.textContent = '0.00';
+            if (lastServiceDateElement) lastServiceDateElement.textContent = 'Never';
+            return;
+        }
+        
+        // Use summary data if available, otherwise calculate from records
+        const totalServices = summary ? summary.totalServices : serviceRecords.length;
+        const totalCost = summary ? summary.totalCost : serviceRecords.reduce((sum, record) => sum + (record.TotalServiceCost || 0), 0);
+        const avgCost = summary ? summary.avgCost : (totalCost / totalServices);
+        const lastServiceDate = summary ? summary.lastServiceDate : (serviceRecords.length > 0 ? serviceRecords[0].ServiceDate : null);
+        
+        // Debug: Log the calculated values
+        console.log('Service history stats:', {
+            totalServices,
+            totalCost,
+            avgCost,
+            lastServiceDate,
+            summary
+        });
+        
+        if (totalServicesElement) totalServicesElement.textContent = totalServices.toString();
+        if (totalServiceCostElement) totalServiceCostElement.textContent = totalCost.toFixed(2);
+        if (avgServiceCostElement) avgServiceCostElement.textContent = avgCost.toFixed(2);
+        if (lastServiceDateElement) {
+            lastServiceDateElement.textContent = lastServiceDate ? 
+                formatDate(lastServiceDate) : 'Never';
+        }
+    }
+    
+    function updateServiceHistoryTable(serviceRecords) {
+        const tbody = document.querySelector('#service-history-table tbody');
+        tbody.innerHTML = '';
+        
+        if (serviceRecords.length === 0) {
+            const row = document.createElement('tr');
+            row.innerHTML = '<td colspan="8">No service records found. Add your first service record to get started.</td>';
+            tbody.appendChild(row);
+            return;
+        }
+        
+        // Sort by date (newest first)
+        serviceRecords.sort((a, b) => {
+            const dateA = new Date(a.ServiceDate);
+            const dateB = new Date(b.ServiceDate);
+            return dateB - dateA;
+        });
+        
+        // Create vehicle map for display
+        const vehicleMap = {};
+        userVehicles.forEach(v => vehicleMap[v.VehicleId] = `${v.Make} ${v.Model}`);
+        
+        serviceRecords.forEach(record => {
+            const row = document.createElement('tr');
+            
+            // Calculate parts total from consumables
+            const partsTotal = record.consumables ? 
+                record.consumables.reduce((sum, item) => sum + (item.TotalPrice || 0), 0) : 0;
+            
+            row.innerHTML = `
+                <td>${formatDate(record.ServiceDate)}</td>
+                <td>${vehicleMap[record.VehicleId] || record.Make + ' ' + record.Model || 'Unknown'}</td>
+                <td>${record.ServiceType}</td>
+                <td>${record.Odometer ? record.Odometer.toFixed(1) : '--'}</td>
+                <td>${partsTotal.toFixed(2)}</td>
+                <td>${record.LaborCost ? record.LaborCost.toFixed(2) : '0.00'}</td>
+                <td>${record.TotalServiceCost.toFixed(2)}</td>
+                <td>
+                    <button class="btn-view-service" onclick="viewServiceDetails('${record.ServiceId}')" title="View Details">
+                        <i class="fas fa-eye"></i>
+                    </button>
+                    <button class="btn-delete-service" onclick="deleteServiceRecord('${record.ServiceId}')" title="Delete">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </td>
+            `;
+            
+            tbody.appendChild(row);
+        });
+    }
+    
+    function updateFilteringStatus(startDate, endDate, vehicleId) {
+        // Remove existing filter status
+        const existingStatus = document.querySelector('.filter-status');
+        if (existingStatus) {
+            existingStatus.remove();
+        }
+        
+        // Check if any filters are active
+        const hasDateFilter = startDate || endDate;
+        const hasVehicleFilter = vehicleId;
+        
+        if (!hasDateFilter && !hasVehicleFilter) {
+            return; // No filters active
+        }
+        
+        // Create filter status element
+        const statusElement = document.createElement('div');
+        statusElement.className = 'filter-status';
+        
+        let statusText = '';
+        const filters = [];
+        
+        if (hasDateFilter) {
+            // Get the period selection to show appropriate message
+            const serviceHistoryPeriod = document.getElementById('service-history-period');
+            const period = serviceHistoryPeriod ? serviceHistoryPeriod.value : 'custom';
+            
+            if (period === 'month') {
+                statusText = 'Showing services from this month';
+            } else if (period === 'year') {
+                statusText = 'Showing services from this year';
+            } else {
+                statusText = 'Filters active: ';
+                if (startDate && endDate) {
+                    filters.push(`Date: ${formatDate(startDate)} to ${formatDate(endDate)}`);
+                } else if (startDate) {
+                    filters.push(`Date: From ${formatDate(startDate)}`);
+                } else if (endDate) {
+                    filters.push(`Date: Until ${formatDate(endDate)}`);
+                }
+            }
+        } else {
+            statusText = 'Filters active: ';
+        }
+        
+        if (hasVehicleFilter) {
+            // Get vehicle name from select element
+            const vehicleSelect = document.getElementById('service-history-vehicle-select');
+            const vehicleName = vehicleSelect ? vehicleSelect.options[vehicleSelect.selectedIndex].text : 'Selected Vehicle';
+            filters.push(`Vehicle: ${vehicleName}`);
+        }
+        
+        if (filters.length > 0 && statusText === 'Filters active: ') {
+            statusText += filters.join(', ');
+        }
+        
+        statusElement.textContent = statusText;
+        
+        // Insert after the service history header
+        const tabHeader = document.querySelector('#service-history-tab .tab-header');
+        if (tabHeader) {
+            tabHeader.insertAdjacentElement('afterend', statusElement);
+        }
+    }
+    
+    async function viewServiceDetails(serviceId) {
+        try {
+            const token = localStorage.getItem('fuelTrackerToken');
+            const userData = JSON.parse(localStorage.getItem('fuelTrackerUser') || '{}');
+            
+            if (!token || !userData.userId) {
+                showToast('Please log in again', 'error');
+                handleLogout();
+                return;
+            }
+
+            // Get service details from the service-getServices endpoint
+            const response = await fetch(`${apiBaseUrl}/service-getServices?userId=${userData.userId}`, {
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                }
+            });
+            
+            if (!response.ok) {
+                throw new Error('Failed to load service details');
+            }
+            
+            const data = await response.json();
+            const serviceRecord = data.services.find(item => item.ServiceId === serviceId);
+            
+            if (!serviceRecord) {
+                showToast('Service record not found', 'error');
+                return;
+            }
+            
+            showServiceDetailsModal(serviceRecord);
+            
+        } catch (error) {
+            console.error('View service details error:', error);
+            showToast(error.message, 'error');
+        }
+    }
+    
+    function showServiceDetailsModal(serviceRecord) {
+        const vehicleMap = {};
+        userVehicles.forEach(v => vehicleMap[v.VehicleId] = `${v.Make} ${v.Model}`);
+        
+        const modal = document.createElement('div');
+        modal.className = 'service-details-modal';
+        modal.innerHTML = `
+            <div class="service-details-content">
+                <div class="service-details-header">
+                    <h3>Service Details</h3>
+                    <button class="service-details-close">&times;</button>
+                </div>
+                
+                <div class="service-detail-item">
+                    <span class="service-detail-label">Vehicle:</span>
+                    <span class="service-detail-value">${vehicleMap[serviceRecord.VehicleId] || serviceRecord.Make + ' ' + serviceRecord.Model || 'Unknown'}</span>
+                </div>
+                
+                <div class="service-detail-item">
+                    <span class="service-detail-label">Service Type:</span>
+                    <span class="service-detail-value">${serviceRecord.ServiceType}</span>
+                </div>
+                
+                <div class="service-detail-item">
+                    <span class="service-detail-label">Service Date:</span>
+                    <span class="service-detail-value">${formatDate(serviceRecord.ServiceDate)}</span>
+                </div>
+                
+                <div class="service-detail-item">
+                    <span class="service-detail-label">Odometer:</span>
+                    <span class="service-detail-value">${serviceRecord.Odometer ? serviceRecord.Odometer.toFixed(1) + ' km' : 'Not specified'}</span>
+                </div>
+                
+                <div class="service-detail-item">
+                    <span class="service-detail-label">Labor Cost:</span>
+                    <span class="service-detail-value">${serviceRecord.LaborCost ? serviceRecord.LaborCost.toFixed(2) : '0.00'}</span>
+                </div>
+                
+                <div class="service-detail-item">
+                    <span class="service-detail-label">Parts Cost:</span>
+                    <span class="service-detail-value">${serviceRecord.consumables ? serviceRecord.consumables.reduce((sum, item) => sum + (item.TotalPrice || 0), 0).toFixed(2) : '0.00'}</span>
+                </div>
+                
+                <div class="service-detail-item">
+                    <span class="service-detail-label">Total Cost:</span>
+                    <span class="service-detail-value">${serviceRecord.TotalServiceCost.toFixed(2)}</span>
+                </div>
+                
+                ${serviceRecord.ServiceNotes ? `
+                <div class="service-detail-item">
+                    <span class="service-detail-label">Notes:</span>
+                    <span class="service-detail-value">${serviceRecord.ServiceNotes}</span>
+                </div>
+                ` : ''}
+                
+                ${serviceRecord.consumables && serviceRecord.consumables.length > 0 ? `
+                <div class="service-consumables-list">
+                    <h4>Consumables Used:</h4>
+                    ${serviceRecord.consumables.map(item => `
+                        <div class="service-consumable-item">
+                            <span>${item.ConsumableName}</span>
+                            <span>${item.Quantity} x ${item.UnitPrice.toFixed(2)} = ${item.TotalPrice.toFixed(2)}</span>
+                        </div>
+                    `).join('')}
+                </div>
+                ` : ''}
+            </div>
+        `;
+        
+        document.body.appendChild(modal);
+        
+        // Add event listeners
+        const closeBtn = modal.querySelector('.service-details-close');
+        closeBtn.addEventListener('click', () => {
+            document.body.removeChild(modal);
+        });
+        
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) {
+                document.body.removeChild(modal);
+            }
+        });
+    }
+    
+    async function deleteServiceRecord(serviceId) {
+        if (!confirm('Are you sure you want to delete this service record? This action cannot be undone.')) {
+            return;
+        }
+        
+        try {
+            showLoading();
+            
+            const token = localStorage.getItem('fuelTrackerToken');
+            const userData = JSON.parse(localStorage.getItem('fuelTrackerUser') || '{}');
+            
+            if (!token || !userData.userId) {
+                showToast('Please log in again', 'error');
+                handleLogout();
+                return;
+            }
+            
+            const response = await fetch(`${apiBaseUrl}/service-deleteService/${serviceId}`, {
+                method: 'DELETE',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                }
+            });
+            
+            if (response.status === 401) {
+                showToast('Session expired. Please log in again.', 'error');
+                handleLogout();
+                return;
+            }
+            
+            if (!response.ok) {
+                const errorText = await response.text();
+                throw new Error(`Failed to delete service record: ${errorText}`);
+            }
+            
+            showToast('Service record deleted successfully', 'success');
+            loadServiceHistory(); // Refresh the service history
+            
+        } catch (error) {
+            console.error('Delete service record error:', error);
+            showToast(error.message, 'error');
+        } finally {
+            hideLoading();
+        }
+    }
+    
+    // Make service history functions globally available
+    window.viewServiceDetails = viewServiceDetails;
+    window.deleteServiceRecord = deleteServiceRecord;
 
     // Settings functions
     function loadSettings() {

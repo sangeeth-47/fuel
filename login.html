@@ -92,6 +92,12 @@
                     <button class="nav-btn" data-tab="add-entry">
                         <i class="fas fa-gas-pump"></i> Add Entry
                     </button>
+                    <button class="nav-btn" data-tab="add-service">
+                        <i class="fas fa-wrench"></i> Add Service
+                    </button>
+                    <button class="nav-btn" data-tab="service-history">
+                        <i class="fas fa-history"></i> Service History
+                    </button>
                     <button class="nav-btn" data-tab="reports">
                         <i class="fas fa-chart-bar"></i> Reports
                     </button>
@@ -240,6 +246,166 @@
                             <button type="submit" class="btn-primary">Save Entry</button>
                         </div>
                     </form>
+                </div>
+                
+                <!-- Add Service Tab -->
+                <div id="add-service-tab" class="content-tab">
+                    <div class="tab-header">
+                        <h2>Add Service Record</h2>
+                    </div>
+                    
+                    <form id="service-form" class="entry-form">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="service-vehicle">Vehicle</label>
+                                <select id="service-vehicle" required>
+                                    <option value="">Select a vehicle</option>
+                                </select>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="service-date">Service Date</label>
+                                <input type="date" id="service-date" required>
+                            </div>
+                        </div>
+                        
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="service-type">Service Type</label>
+                                <select id="service-type" required>
+                                    <option value="">Select service type</option>
+                                    <option value="Regular Maintenance">Regular Maintenance</option>
+                                    <option value="Oil Change">Oil Change</option>
+                                    <option value="Tire Service">Tire Service</option>
+                                    <option value="Brake Service">Brake Service</option>
+                                    <option value="Engine Repair">Engine Repair</option>
+                                    <option value="Transmission Service">Transmission Service</option>
+                                    <option value="AC Service">AC Service</option>
+                                    <option value="Battery Service">Battery Service</option>
+                                    <option value="Other">Other</option>
+                                </select>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="service-odometer">Odometer (km)</label>
+                                <input type="number" id="service-odometer" step="1" min="0">
+                            </div>
+                        </div>
+                        
+                        <!-- Consumables Section -->
+                        <div class="consumables-section">
+                            <div class="section-header">
+                                <h3>Consumables & Parts</h3>
+                                <button type="button" id="add-consumable-btn" class="btn-secondary">
+                                    <i class="fas fa-plus"></i> Add Item
+                                </button>
+                            </div>
+                            
+                            <div id="consumables-list" class="consumables-list">
+                                <div class="no-consumables">
+                                    <p>No consumables added yet. Click "Add Item" to add parts and materials used in this service.</p>
+                                </div>
+                            </div>
+                            
+                            <div class="form-group total-parts-cost">
+                                <label for="total-parts-cost">Total Spare Cost</label>
+                                <input type="number" id="total-parts-cost" step="0.01" min="0" readonly>
+                            </div>
+                        </div>
+                        
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="labor-cost">Labor Cost</label>
+                                <input type="number" id="labor-cost" step="0.01" min="0">
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="total-service-cost">Total Service Cost *</label>
+                                <input type="number" id="total-service-cost" step="0.01" min="0" required>
+                            </div>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="service-notes">Service Notes</label>
+                            <textarea id="service-notes" rows="4" placeholder="Details about the service performed, issues found, recommendations..."></textarea>
+                        </div>
+                        
+                        <div class="form-actions">
+                            <button type="reset" class="btn-secondary">Clear</button>
+                            <button type="submit" class="btn-primary">Save Service Record</button>
+                        </div>
+                    </form>
+                </div>
+                
+                <!-- Service History Tab -->
+                <div id="service-history-tab" class="content-tab">
+                    <div class="tab-header">
+                        <h2>Service History</h2>
+                        <div class="service-history-controls">
+                            <select id="service-history-vehicle-select">
+                                <option value="">All Vehicles</option>
+                            </select>
+                            <select id="service-history-period">
+                                <option value="month">This Month</option>
+                                <option value="year">This Year</option>
+                                <option value="custom">Custom Range</option>
+                            </select>
+                            <div id="service-custom-range-controls" class="custom-range-controls hidden">
+                                <input type="date" id="service-start-date" title="Start Date">
+                                <span>to</span>
+                                <input type="date" id="service-end-date" title="End Date">
+                            </div>
+                            <button id="generate-service-history-btn" class="btn-primary" title="Generate Service History">
+                                Generate
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="service-history-container">
+                        <div class="service-stats-grid">
+                            <div class="stat-card">
+                                <div class="stat-value" id="total-services">--</div>
+                                <div class="stat-label">Total Services</div>
+                            </div>
+                            
+                            <div class="stat-card">
+                                <div class="stat-value" id="total-service-history-cost">--</div>
+                                <div class="stat-label">Total Service Cost</div>
+                            </div>
+                            
+                            <div class="stat-card">
+                                <div class="stat-value" id="avg-service-cost">--</div>
+                                <div class="stat-label">Average Service Cost</div>
+                            </div>
+                            
+                            <div class="stat-card">
+                                <div class="stat-value" id="last-service-date">--</div>
+                                <div class="stat-label">Last Service Date</div>
+                            </div>
+                        </div>
+                        
+                        <div class="service-history-table-container">
+                            <table id="service-history-table">
+                                <thead>
+                                    <tr>
+                                        <th>Date</th>
+                                        <th>Vehicle</th>
+                                        <th>Service Type</th>
+                                        <th>Odometer</th>
+                                        <th>Parts Cost</th>
+                                        <th>Labor Cost</th>
+                                        <th>Total Cost</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td colspan="8">Select your filters and click "Generate" to view service history.</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
                 </div>
                 
                 <!-- Reports Tab -->
