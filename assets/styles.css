@@ -1845,6 +1845,24 @@ table tr:hover {
     }
 }
 
+@media (max-width: 768px) {
+    .stat-card {
+        padding: 1rem 0.5rem;
+        margin-bottom: 1rem;
+        text-align: center;
+    }
+    .stat-value {
+        font-size: 1.2rem;
+        text-align: center;
+        display: block;
+        word-break: break-word;
+    }
+    .stat-label {
+        font-size: 0.8rem;
+        text-align: center;
+    }
+}
+
 /* Table action buttons */
 .btn-delete-entry {
     background-color: var(--danger-color);
