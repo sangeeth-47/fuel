@@ -1,3 +1,11 @@
+/* Qore Regular font-face */
+@font-face {
+    font-family: 'Qore';
+    src: url('font/qore.regular.ttf') format('truetype');
+    font-weight: normal;
+    font-style: normal;
+}
+
 :root {
     --primary-color: #4285f4;
     --primary-dark: #3367d6;
@@ -591,6 +599,13 @@ body {
     
     .auth-btn:active {
         transform: translateY(0);
+    }
+}
+
+@media (max-width: 768px) {
+    #app-title {
+        font-family: 'Qore', Arial, sans-serif;
+        font-size: 1.1rem !important;
     }
 }
 
