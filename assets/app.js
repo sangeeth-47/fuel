@@ -1469,13 +1469,44 @@ async function refreshToken() {
             tbody.innerHTML = '';
             
             if (recentEntries.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="5">No entries found. Add your first fuel entry!</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="7">No entries found. Add your first fuel entry!</td></tr>';
             } else {
+                // Get all entries for the current vehicle to calculate distances
+                const allEntries = data.entries || [];
+                
                 recentEntries.forEach(entry => {
+                    let kmDriven = '--';
+                    
+                    // Calculate distance driven for this entry
+                    if (allEntries.length > 1) {
+                        // Find all entries for the same vehicle, sorted by date (oldest first for distance calculation)
+                        const vehicleEntries = allEntries.filter(e => e.VehicleId === entry.VehicleId)
+                            .sort((a, b) => new Date(a.EntryDate) - new Date(b.EntryDate));
+                        
+                        // Find the current entry's position in the sorted list
+                        const currentIndex = vehicleEntries.findIndex(e => 
+                            e.EntryDate === entry.EntryDate && e.Odometer === entry.Odometer
+                        );
+                        
+                        // Calculate distance from previous entry
+                        if (currentIndex > 0) {
+                            const previousEntry = vehicleEntries[currentIndex - 1];
+                            const distance = entry.Odometer - previousEntry.Odometer;
+                            if (distance > 0) {
+                                kmDriven = distance.toFixed(1);
+                            } else if (distance === 0) {
+                                kmDriven = '0.0';
+                            } else {
+                                kmDriven = 'Invalid'; // Negative distance indicates data error
+                            }
+                        }
+                    }
+                    
                     const row = document.createElement('tr');
                     row.innerHTML = `
                         <td>${formatDateTime(entry.EntryDate)}</td>
                         <td>${entry.Odometer.toFixed(1)}</td>
+                        <td>${kmDriven}</td>
                         <td>${entry.Liters.toFixed(2)}</td>
                         <td>${entry.PricePerLiter?.toFixed(2) || '--'}</td>
                         <td>${entry.TotalCost.toFixed(2)}</td>
@@ -1923,25 +1954,57 @@ async function refreshToken() {
         tbody.innerHTML = '';
         
         if (recentEntries.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="6">No entries found</td></tr>';
-        } else {                recentEntries.forEach(entry => {
-                    const row = document.createElement('tr');
-                    row.innerHTML = `
-                        <td>${formatDateTime(entry.EntryDate)}</td>
-                        <td>${entry.Odometer.toFixed(1)}</td>
-                        <td>${entry.Liters.toFixed(2)}</td>
-                        <td>${entry.PricePerLiter?.toFixed(2) || '--'}</td>
-                        <td>${entry.TotalCost.toFixed(2)}</td>
-                        <td>
-                            <button class="btn-delete-entry" 
-                                    onclick="deleteFuelEntry('${entry.EntryId}', '${entry.VehicleId}')"
-                                    title="Delete Entry">
-                                <i class="fas fa-trash"></i>
-                            </button>
-                        </td>
-                    `;
-                    tbody.appendChild(row);
-                });
+            tbody.innerHTML = '<tr><td colspan="7">No entries found</td></tr>';
+        } else {
+            // Get all entries for distance calculation
+            const allEntries = data.entries || [];
+            
+            recentEntries.forEach(entry => {
+                let kmDriven = '--';
+                
+                // Calculate distance driven for this entry
+                if (allEntries.length > 1) {
+                    // Find all entries for the same vehicle, sorted by date (oldest first for distance calculation)
+                    const vehicleEntries = allEntries.filter(e => e.VehicleId === entry.VehicleId)
+                        .sort((a, b) => new Date(a.EntryDate) - new Date(b.EntryDate));
+                    
+                    // Find the current entry's position in the sorted list
+                    const currentIndex = vehicleEntries.findIndex(e => 
+                        e.EntryDate === entry.EntryDate && e.Odometer === entry.Odometer
+                    );
+                    
+                    // Calculate distance from previous entry
+                    if (currentIndex > 0) {
+                        const previousEntry = vehicleEntries[currentIndex - 1];
+                        const distance = entry.Odometer - previousEntry.Odometer;
+                        if (distance > 0) {
+                            kmDriven = distance.toFixed(1);
+                        } else if (distance === 0) {
+                            kmDriven = '0.0';
+                        } else {
+                            kmDriven = 'Invalid'; // Negative distance indicates data error
+                        }
+                    }
+                }
+                
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${formatDateTime(entry.EntryDate)}</td>
+                    <td>${entry.Odometer.toFixed(1)}</td>
+                    <td>${kmDriven}</td>
+                    <td>${entry.Liters.toFixed(2)}</td>
+                    <td>${entry.PricePerLiter?.toFixed(2) || '--'}</td>
+                    <td>${entry.TotalCost.toFixed(2)}</td>
+                    <td>
+                        <button class="btn-delete-entry" 
+                                onclick="deleteFuelEntry('${entry.EntryId}', '${entry.VehicleId}')"
+                                title="Delete Entry">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
         }
     } catch (error) {
         showToast(error.message, 'error');
@@ -2476,26 +2539,50 @@ async function refreshToken() {
             
             entries.forEach((entry, index) => {
                 let consumption = '--';
+                let kmDriven = '--';
+                
+                // Calculate distance driven for this entry
+                // Find all entries for the same vehicle, sorted by date (oldest first for distance calculation)
+                const vehicleEntries = entries.filter(e => e.VehicleId === entry.VehicleId)
+                    .sort((a, b) => new Date(a.EntryDate) - new Date(b.EntryDate));
+                
+                // Find the current entry's position in the sorted list
+                const currentIndex = vehicleEntries.findIndex(e => 
+                    e.EntryDate === entry.EntryDate && e.Odometer === entry.Odometer
+                );
+                
+                // Calculate distance from previous entry
+                if (currentIndex > 0) {
+                    const previousEntry = vehicleEntries[currentIndex - 1];
+                    const distance = entry.Odometer - previousEntry.Odometer;
+                    if (distance > 0) {
+                        kmDriven = distance.toFixed(1);
+                    } else if (distance === 0) {
+                        kmDriven = '0.0';
+                    } else {
+                        kmDriven = 'Invalid'; // Negative distance indicates data error
+                    }
+                }
                 
                 // Only calculate consumption for full tank entries
                 if (entry.IsFullTank) {
-                    // Find all entries for the same vehicle, sorted by date (newest first)
-                    const vehicleEntries = entries.filter(e => e.VehicleId === entry.VehicleId)
+                    // Use the same vehicle entries list, but sorted by date (newest first) for consumption calculation
+                    const vehicleEntriesNewestFirst = entries.filter(e => e.VehicleId === entry.VehicleId)
                         .sort((a, b) => new Date(b.EntryDate) - new Date(a.EntryDate));
                     
                     // Find the current entry's position in the sorted list
-                    const currentIndex = vehicleEntries.findIndex(e => 
+                    const currentIndexNewest = vehicleEntriesNewestFirst.findIndex(e => 
                         e.EntryDate === entry.EntryDate && e.Odometer === entry.Odometer
                     );
                     
                     // Look for the next entry chronologically (previous in our sorted list)
-                    if (currentIndex < vehicleEntries.length - 1) {
-                        const nextEntry = vehicleEntries[currentIndex + 1];
+                    if (currentIndexNewest < vehicleEntriesNewestFirst.length - 1) {
+                        const nextEntry = vehicleEntriesNewestFirst[currentIndexNewest + 1];
                         
                         // Check if the next entry is also a full tank
                         if (nextEntry.IsFullTank) {
                             // Check if there are any non-full tank entries between these two
-                            const entriesBetween = vehicleEntries.slice(currentIndex + 1)
+                            const entriesBetween = vehicleEntriesNewestFirst.slice(currentIndexNewest + 1)
                                 .filter(e => 
                                     new Date(e.EntryDate) > new Date(nextEntry.EntryDate) &&
                                     new Date(e.EntryDate) < new Date(entry.EntryDate)
@@ -2520,6 +2607,7 @@ async function refreshToken() {
                     <td>${formatDateTime(entry.EntryDate)}</td>
                     <td>${vehicleMap[entry.VehicleId] || 'Unknown'}</td>
                     <td>${entry.Odometer.toFixed(1)}</td>
+                    <td>${kmDriven}</td>
                     <td>${entry.Liters.toFixed(2)}</td>
                     <td>${entry.PricePerLiter.toFixed(2)}</td>
                     <td>${entry.TotalCost.toFixed(2)}</td>
