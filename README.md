@@ -1,1 +1,1 @@
-URL : https://billing.sangeeth47.in
+URL : https://fuel.sangeeth47.in
