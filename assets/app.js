@@ -41,6 +41,19 @@ document.addEventListener('DOMContentLoaded', function() {
         try {
             currentUser = JSON.parse(storedUser);
             authToken = storedToken;
+            // Check if token is expired
+            try {
+                const payload = JSON.parse(atob(storedToken.split('.')[1]));
+                if (payload.exp * 1000 < Date.now()) {
+                    console.warn('Session expired, logging out...');
+                    handleLogout();
+                    return;
+                }
+            } catch (err) {
+                console.error('Error decoding token:', err);
+                handleLogout();
+                return;
+            }
             showMainScreen();
             loadDashboard();
         } catch (e) {
@@ -48,6 +61,7 @@ document.addEventListener('DOMContentLoaded', function() {
             showAuthScreen();
         }
     } else {
+        // handleLogout(); // Ensure clean state
         showAuthScreen();
     }
     
@@ -1273,7 +1287,7 @@ async function refreshToken() {
                 if (avgEfficiency === '--') {
                     const trendElement = document.getElementById('consumption-trend');
                     trendElement.className = 'stat-trend';
-                    trendElement.innerHTML = '<i class="fas fa-minus"></i> --';
+                    trendElement.innerHTML = '<i class="fas fa-minus"></i>';
                 }
 
                 // Show informative message
@@ -1295,7 +1309,7 @@ async function refreshToken() {
                 // Reset trend display
                 const trendElement = document.getElementById('consumption-trend');
                 trendElement.className = 'stat-trend';
-                trendElement.innerHTML = '<i class="fas fa-minus"></i> --';
+                trendElement.innerHTML = '<i class="fas fa-minus"></i>';
 
                 showToast('No fuel entries found. Add your first entry to get started!', 'info');
             }
@@ -1509,12 +1523,12 @@ async function refreshToken() {
                 `;
             } else {
                 trendElement.className = 'stat-trend';
-                trendElement.innerHTML = '<i class="fas fa-minus"></i> --';
+                trendElement.innerHTML = '<i class="fas fa-minus"></i>';
             }
         } else {
             // Not enough data for trend calculation
             trendElement.className = 'stat-trend';
-            trendElement.innerHTML = '<i class="fas fa-minus"></i> --';
+            trendElement.innerHTML = '<i class="fas fa-minus"></i>';
         }
         
         // Show calculation note if present
