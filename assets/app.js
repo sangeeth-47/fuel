@@ -597,13 +597,30 @@ async function refreshToken() {
         const password = document.getElementById('register-password').value;
         const confirmPassword = document.getElementById('register-confirm-password').value;
         
-        if (!username || !email || !password || !confirmPassword) {
+        if (!username || !fullName || !email || !password || !confirmPassword) {
             showToast('Please fill in all required fields', 'error');
             return;
         }
-        
+        if (username.length < 3 || username.length > 50) {
+        showToast('Username must be between 3 and 50 characters', 'error');
+        return;
+        }
+        // Email validation
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(email)) {
+            showToast('Please enter a valid email address', 'error');
+            return;
+        }
+        if (fullName.length < 3 || fullName.length > 50) {
+        showToast('Please fill proper Full Name', 'error');
+        return;
+        }
         if (password !== confirmPassword) {
             showToast('Passwords do not match', 'error');
+            return;
+        }
+        if (password .length < 4) {
+            showToast('Passwords must be 4 characters long!', 'error');
             return;
         }
         
