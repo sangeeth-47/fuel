@@ -612,7 +612,7 @@ async function refreshToken() {
             return;
         }
         if (fullName.length < 3 || fullName.length > 50) {
-        showToast('Please fill proper Full Name', 'error');
+        showToast('Please enter the correct full name.', 'error');
         return;
         }
         if (password !== confirmPassword) {
