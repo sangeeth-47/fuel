@@ -811,10 +811,24 @@ async function refreshToken() {
             <button class="toast-close">&times;</button>
         `;
         
+        // Calculate bottom position based on existing toasts
+        const existingToasts = document.querySelectorAll('.toast');
+        let bottomPosition = 20; // Base position in pixels
+        
+        existingToasts.forEach(existingToast => {
+            const rect = existingToast.getBoundingClientRect();
+            const currentBottom = window.innerHeight - rect.top;
+            if (currentBottom > bottomPosition) {
+                bottomPosition = currentBottom + 10; // Add 10px gap between toasts
+            }
+        });
+        
+        console.log('Calculated bottom position for new toast:', bottomPosition);
+        
         // Add inline styles to ensure visibility with fixed positioning
         toast.style.cssText = `
             position: fixed !important;
-            bottom: 20px !important;
+            bottom: ${bottomPosition}px !important;
             right: 20px !important;
             display: flex !important;
             align-items: center !important;
@@ -835,6 +849,7 @@ async function refreshToken() {
             font-size: 14px !important;
             font-family: inherit !important;
             pointer-events: auto !important;
+            transition: bottom 0.3s ease !important;
         `;
         
         // Add event listener for close button
@@ -854,6 +869,8 @@ async function refreshToken() {
                 console.log('Toast close button clicked');
                 if (toast.parentNode) {
                     toast.remove();
+                    // Reposition remaining toasts
+                    repositionToasts();
                 }
             });
         }
@@ -916,6 +933,8 @@ async function refreshToken() {
             console.log('Auto-removing toast after 4 seconds');
             if (toast.parentNode) {
                 toast.remove();
+                // Reposition remaining toasts
+                repositionToasts();
             }
         }, 4000);
     }
