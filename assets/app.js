@@ -790,6 +790,18 @@ async function refreshToken() {
         loadingOverlay.classList.add('hidden');
     }
     
+    // Helper function to reposition all toasts after one is removed
+    function repositionToasts() {
+        const allToasts = document.querySelectorAll('.toast');
+        let bottomPosition = 20; // Base position
+        
+        allToasts.forEach(toast => {
+            toast.style.bottom = `${bottomPosition}px`;
+            const rect = toast.getBoundingClientRect();
+            bottomPosition = window.innerHeight - rect.top + 10; // Add 10px gap
+        });
+    }
+    
     function showToast(message, type = 'info') {
         console.log('showToast called with:', { message, type });
         
