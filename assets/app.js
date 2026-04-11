@@ -9,7 +9,7 @@ document.addEventListener('DOMContentLoaded', function() {
     let dashboardLoaded = false; // Track if dashboard has been loaded
     
     // API configuration
-    const apiBaseUrl = 'https://sangeeth2314105883websitecounter.azurewebsites.net/api';
+    const apiBaseUrl = 'https://api.sangeeth47.in/api';
     
     // DOM elements
     const authScreen = document.getElementById('auth-screen');
