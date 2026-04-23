@@ -207,6 +207,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     priceInput.value = calculatedPrice;
                     priceInput.style.backgroundColor = '#e8f5e8';
                     setTimeout(() => { priceInput.style.backgroundColor = ''; }, 1000);
+                    console.log(`Rule 3: Total exists + Liters modified → Price = ${total} ÷ ${liters} = ${calculatedPrice}`);
                     isCalculating = false;
                 }
             });
@@ -230,13 +231,17 @@ document.addEventListener('DOMContentLoaded', function() {
                         const calculatedTotal = (liters * price).toFixed(2);
                         totalInput.value = calculatedTotal;
                         totalInput.style.backgroundColor = '#e8f5e8';
-                        setTimeout(() => { totalInput.style.backgroundColor = ''; }, 1000); }
+                        setTimeout(() => { totalInput.style.backgroundColor = ''; }, 1000);
+                        console.log(`Rule 1: Liters exists + Price modified → Total = ${liters} × ${price} = ${calculatedTotal}`);
+                    }
                     // Rule 4: Total exists + Price modified → Auto-fill Liters
                     else if (total > 0) {
                         const calculatedLiters = (total / price).toFixed(2);
                         litersInput.value = calculatedLiters;
                         litersInput.style.backgroundColor = '#e8f5e8';
-                        setTimeout(() => { litersInput.style.backgroundColor = ''; }, 1000); }
+                        setTimeout(() => { litersInput.style.backgroundColor = ''; }, 1000);
+                        console.log(`Rule 4: Total exists + Price modified → Liters = ${total} ÷ ${price} = ${calculatedLiters}`);
+                    }
                     isCalculating = false;
                 }
             });
@@ -260,6 +265,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     priceInput.value = calculatedPrice;
                     priceInput.style.backgroundColor = '#e8f5e8';
                     setTimeout(() => { priceInput.style.backgroundColor = ''; }, 1000);
+                    console.log(`Rule 2: Liters exists + Total modified → Price = ${total} ÷ ${liters} = ${calculatedPrice}`);
                     isCalculating = false;
                 }
             });
@@ -410,6 +416,8 @@ document.addEventListener('DOMContentLoaded', function() {
                         
                         serviceStartDate.value = startDate;
                         serviceEndDate.value = endDate;
+                        
+                        console.log('Set custom range default to previous month:', { startDate, endDate });
                     }
                 } else {
                     serviceCustomRangeControls.classList.add('hidden');
@@ -701,6 +709,9 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // UI functions
     function showAuthScreen() {
+    console.log('Showing auth screen');
+    console.log('Login form exists:', !!document.getElementById('login-form'));
+    console.log('Register form exists:', !!document.getElementById('register-form'));
     
     authScreen.classList.remove('hidden');
     mainScreen.classList.add('hidden');
@@ -814,6 +825,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     function showToast(message, type = 'info') {
+        console.log('showToast called with:', { message, type });
         
         // Get toast container fresh each time to ensure it exists
         const toastContainer = document.getElementById('toast-container');
@@ -824,6 +836,7 @@ document.addEventListener('DOMContentLoaded', function() {
             return;
         }
         
+        console.log('Toast container found, creating toast element');
         
         const toast = document.createElement('div');
         toast.className = `toast ${type}`;
@@ -844,6 +857,7 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
         
+        console.log('Calculated bottom position for new toast:', bottomPosition);
         
         // Add inline styles to ensure visibility with fixed positioning
         toast.style.cssText = `
@@ -886,6 +900,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 opacity: 0.8 !important;
             `;
             closeBtn.addEventListener('click', () => {
+                console.log('Toast close button clicked');
                 if (toast.parentNode) {
                     toast.remove();
                     // Reposition remaining toasts
@@ -896,16 +911,60 @@ document.addEventListener('DOMContentLoaded', function() {
         
         // Add toast directly to body instead of container to avoid any positioning issues
         document.body.appendChild(toast);
+        console.log('Toast added to body');
         
         // Debug: Check if toast is visible
         const toastRect = toast.getBoundingClientRect();
         const containerRect = toastContainer.getBoundingClientRect();
+        console.log('Toast position details:', {
+            toast: {
+                x: toastRect.x,
+                y: toastRect.y,
+                width: toastRect.width,
+                height: toastRect.height,
+                top: toastRect.top,
+                left: toastRect.left,
+                right: toastRect.right,
+                bottom: toastRect.bottom
+            },
+            container: {
+                x: containerRect.x,
+                y: containerRect.y,
+                width: containerRect.width,
+                height: containerRect.height,
+                top: containerRect.top,
+                left: containerRect.left,
+                right: containerRect.right,
+                bottom: containerRect.bottom
+            },
+            computedStyle: {
+                display: window.getComputedStyle(toast).display,
+                visibility: window.getComputedStyle(toast).visibility,
+                opacity: window.getComputedStyle(toast).opacity,
+                zIndex: window.getComputedStyle(toast).zIndex,
+                position: window.getComputedStyle(toast).position,
+                backgroundColor: window.getComputedStyle(toast).backgroundColor,
+                color: window.getComputedStyle(toast).color
+            },
+            containerStyle: {
+                display: window.getComputedStyle(toastContainer).display,
+                visibility: window.getComputedStyle(toastContainer).visibility,
+                opacity: window.getComputedStyle(toastContainer).opacity,
+                zIndex: window.getComputedStyle(toastContainer).zIndex,
+                position: window.getComputedStyle(toastContainer).position,
+                top: window.getComputedStyle(toastContainer).top,
+                right: window.getComputedStyle(toastContainer).right,
+                bottom: window.getComputedStyle(toastContainer).bottom,
+                left: window.getComputedStyle(toastContainer).left
+            }
+        });
         
         // Force reflow to ensure the toast is rendered
         toast.offsetHeight;
         
         // Auto remove after 4 seconds
         setTimeout(() => {
+            console.log('Auto-removing toast after 4 seconds');
             if (toast.parentNode) {
                 toast.remove();
                 // Reposition remaining toasts
@@ -922,7 +981,7 @@ document.addEventListener('DOMContentLoaded', function() {
             showLoading();
             
             // Load user's vehicles
-            const vehiclesResponse = await fetch(`${apiBaseUrl}/getVehicles`, {
+            const vehiclesResponse = await fetch(`http://localhost:7071/api/getVehicles`, {
                 headers: {
                     'Authorization': `Bearer ${localStorage.getItem('fuelTrackerToken')}`
                 }
@@ -937,7 +996,7 @@ document.addEventListener('DOMContentLoaded', function() {
             // For each vehicle, try to get the latest odometer reading
             for (let vehicle of userVehicles) {
                 try {
-                    const statsResponse = await fetch(`${apiBaseUrl}/getFuelStats?vehicleId=${vehicle.VehicleId}`, {
+                    const statsResponse = await fetch(`http://localhost:7071/api/getFuelStats?vehicleId=${vehicle.VehicleId}`, {
                         headers: {
                             'Authorization': `Bearer ${localStorage.getItem('fuelTrackerToken')}`
                         }
@@ -1080,6 +1139,8 @@ document.addEventListener('DOMContentLoaded', function() {
         
         // Add event listener to the desktop dashboard vehicle selector
         updatedDashboardSelect.addEventListener('change', function() {
+            console.log('Desktop vehicle selected:', this.value);
+            console.log('Available vehicles:', userVehicles.map(v => `${v.VehicleId}: ${v.Make} ${v.Model}`));
             
             // Sync with mobile selector
             updatedMobileDashboardSelect.value = this.value;
@@ -1091,6 +1152,9 @@ document.addEventListener('DOMContentLoaded', function() {
         
         // Add event listener to the mobile dashboard vehicle selector
         updatedMobileDashboardSelect.addEventListener('change', function() {
+            console.log('Mobile vehicle selected:', this.value);
+            console.log('Available vehicles:', userVehicles.map(v => `${v.VehicleId}: ${v.Make} ${v.Model}`));
+            
             // Sync with desktop selector
             updatedDashboardSelect.value = this.value;
             
@@ -1106,6 +1170,8 @@ document.addEventListener('DOMContentLoaded', function() {
         return;
     }
     
+    console.log('Loading stats for vehicle:', vehicleId);
+    
     try {
         showLoading();
         
@@ -1113,25 +1179,34 @@ document.addEventListener('DOMContentLoaded', function() {
         const token = localStorage.getItem('fuelTrackerToken');
         const userData = JSON.parse(localStorage.getItem('fuelTrackerUser') || '{}');
         
+        console.log('Token exists:', !!token);
+        console.log('Token preview:', token ? token.substring(0, 20) + '...' : 'null');
+        console.log('User ID:', userData.userId);
+        
         if (!token) {
             showToast('Please log in again', 'error');
             handleLogout();
             return;
         }
         
-        const response = await fetch(`${apiBaseUrl}/getFuelStats?vehicleId=${vehicleId}`, {
+        const response = await fetch(`http://localhost:7071/api/getFuelStats?vehicleId=${vehicleId}`, {
             headers: {
                 'Authorization': `Bearer ${token}`,
                 'Content-Type': 'application/json'
             }
         });
         
+        console.log('API Response status:', response.status);
+        console.log('API Response headers:', Object.fromEntries(response.headers.entries()));
+        
         // Handle unauthorized response
         if (response.status === 401) {
+            console.log('401 Unauthorized - Token validation failed on server');
             
             // Try to get more details about the error
             try {
                 const errorText = await response.text();
+                console.log('401 Error details:', errorText);
             } catch (e) {
                 console.log('Could not read error details');
             }
@@ -1150,9 +1225,27 @@ document.addEventListener('DOMContentLoaded', function() {
         
         const data = await response.json();
         
+        console.log('=== FULL API RESPONSE ===');
+        console.log('Response status:', response.status);
+        console.log('Response data:', JSON.stringify(data, null, 2));
+        console.log('=== END FULL API RESPONSE ===');
+        
+        console.log('Vehicle details:', data.vehicle);
+        console.log('Number of entries:', data.entries?.length || 0);
+        console.log('Entries data:', data.entries);
+        console.log('Stats data:', data.stats);
+        
         // Add detailed odometer analysis
         if (data.entries && data.entries.length > 0) {
+            console.log('=== ODOMETER ANALYSIS ===');
             const sortedEntries = [...data.entries].sort((a, b) => new Date(a.EntryDate) - new Date(b.EntryDate));
+            console.log('Entries sorted by date:', sortedEntries.map(e => ({
+                date: e.EntryDate,
+                odometer: e.Odometer,
+                liters: e.Liters,
+                cost: e.TotalCost,
+                isFullTank: e.IsFullTank
+            })));
             
             // Group by date to understand multiple fueling per day
             const dailyGroups = {};
@@ -1164,6 +1257,14 @@ document.addEventListener('DOMContentLoaded', function() {
                 dailyGroups[date].push(entry);
             });
             
+            console.log('Daily fuel groups:', Object.keys(dailyGroups).map(date => ({
+                date,
+                count: dailyGroups[date].length,
+                totalLiters: dailyGroups[date].reduce((sum, e) => sum + e.Liters, 0),
+                odometerRange: dailyGroups[date].length > 1 ? 
+                    `${dailyGroups[date][0].Odometer} - ${dailyGroups[date][dailyGroups[date].length - 1].Odometer}` :
+                    dailyGroups[date][0].Odometer
+            })));
             
             // Check for odometer consistency across days
             const dailyKeys = Object.keys(dailyGroups).sort((a, b) => new Date(a) - new Date(b));
@@ -1178,8 +1279,11 @@ document.addEventListener('DOMContentLoaded', function() {
                 const nextOdometer = nextDay[0].Odometer;
                 const odometerDiff = nextOdometer - currentOdometer;
                 
+                console.log(`Day ${dailyKeys[i]} to ${dailyKeys[i + 1]}: ${currentOdometer} -> ${nextOdometer} (diff: ${odometerDiff})`);
+                
                 if (odometerDiff > 0) {
                     hasValidSequence = true;
+                    console.log(`✓ Valid sequence found: ${odometerDiff} km`);
                 } else if (odometerDiff < 0) {
                     console.log(`✗ Negative odometer difference: ${odometerDiff} km`);
                 } else {
@@ -1187,15 +1291,21 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             }
             
+            console.log('Has valid odometer sequence:', hasValidSequence);
+            console.log('=== END ODOMETER ANALYSIS ===');
         }
         
         // Check for "not enough data" case (stats will be null or all zeros)
         if (!data.stats || data.stats.avgConsumption === null || data.stats.totalDistance === 0) {
+            console.log('Stats are null or zero - insufficient data for calculations');
+            console.log('Raw stats data:', data.stats);
+            console.log('Entries count:', data.entries?.length || 0);
             
             // Not enough data for full statistics - but we can show basic info
             const entries = data.entries || [];
 
             if (entries.length > 0) {
+                console.log('Showing basic totals from entries:', entries);
                 // Calculate basic totals from available entries
                 const totalLiters = entries.reduce((sum, entry) => sum + (entry.Liters || 0), 0);
                 const totalCost = entries.reduce((sum, entry) => sum + (entry.TotalCost || 0), 0);
@@ -1207,10 +1317,13 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (entries.length > 1) {
                     // Find min and max odometer for total distance calculation
                     const odometers = entries.map(e => e.Odometer).filter(o => typeof o === 'number');
+                    console.log('Odometer readings for basic calculation:', odometers);
                     if (odometers.length > 1) {
                         const minOdo = Math.min(...odometers);
                         const maxOdo = Math.max(...odometers);
                         const distance = maxOdo - minOdo;
+                        console.log(`Correct distance calculation: ${maxOdo} - ${minOdo} = ${distance} km`);
+                        console.log(`Total fuel used: ${totalLiters} L`);
                         
                         if (distance > 0) {
                             totalDistance = distance.toFixed(1);
@@ -1219,6 +1332,7 @@ document.addEventListener('DOMContentLoaded', function() {
                             if (totalLiters > 0) {
                                 const efficiency = distance / totalLiters;
                                 avgEfficiency = efficiency.toFixed(2);
+                                console.log(`Correct efficiency calculation: ${distance} km / ${totalLiters} L = ${efficiency.toFixed(2)} KM/L`);
                                 
                                 // Also update the trend to show this is a corrected calculation
                                 const trendElement = document.getElementById('consumption-trend');
@@ -1378,10 +1492,18 @@ document.addEventListener('DOMContentLoaded', function() {
         // Check if server calculation is reasonable, if not use manual calculation
         let avgEfficiency;
         
+        console.log('Server stats data:', {
+            avgConsumption: data.stats.avgConsumption,
+            totalDistance: data.stats.totalDistance,
+            totalLiters: data.stats.totalLiters,
+            totalCost: data.stats.totalCost
+        });
+        
         // Always calculate manually first for verification
         let manualEfficiency = 0;
         if (data.stats.totalDistance > 0 && data.stats.totalLiters > 0) {
             manualEfficiency = data.stats.totalDistance / data.stats.totalLiters;
+            console.log(`Manual calculation: ${data.stats.totalDistance} km / ${data.stats.totalLiters} L = ${manualEfficiency.toFixed(2)} KM/L`);
         }
         
         // Try to determine server calculation
@@ -1389,6 +1511,11 @@ document.addEventListener('DOMContentLoaded', function() {
             // Check different possible formats the server might be using
             let serverEfficiency1 = data.stats.avgConsumption; // Direct KM/L
             let serverEfficiency2 = 100 / data.stats.avgConsumption; // L/100km converted to KM/L
+            
+            console.log(`Server value: ${data.stats.avgConsumption}`);
+            console.log(`Option 1 (direct KM/L): ${serverEfficiency1.toFixed(2)}`);
+            console.log(`Option 2 (converted from L/100km): ${serverEfficiency2.toFixed(2)}`);
+            console.log(`Manual calculation: ${manualEfficiency.toFixed(2)}`);
             
             // Use the server value that's closest to manual calculation, or manual if both are way off
             const diff1 = Math.abs(serverEfficiency1 - manualEfficiency);
@@ -1398,18 +1525,30 @@ document.addEventListener('DOMContentLoaded', function() {
             if (manualEfficiency > 0 && (diff1 > 10 && diff2 > 10)) {
                 // Both server calculations are way off, use manual
                 avgEfficiency = manualEfficiency;
+                console.log(`Using manual calculation (server values too far off)`);
                 showToast(`Corrected efficiency: ${avgEfficiency.toFixed(2)} KM/L (server calculation was incorrect)`, 'warning');
             } else if (diff1 <= diff2) {
                 // Direct value is closer
                 avgEfficiency = serverEfficiency1;
+                console.log(`Using direct server value`);
             } else {
                 // Converted value is closer
                 avgEfficiency = serverEfficiency2;
+                console.log(`Using converted server value (L/100km → KM/L)`);
             }
         } else {
             // Server didn't provide avgConsumption, use manual
             avgEfficiency = manualEfficiency;
+            console.log(`Using manual calculation (no server avgConsumption)`);
         }
+        
+        console.log('Final Stats Update:', {
+            avgConsumption: data.stats.avgConsumption,
+            avgEfficiency: avgEfficiency,
+            totalDistance: data.stats.totalDistance,
+            totalLiters: data.stats.totalLiters,
+            totalCost: data.stats.totalCost
+        });
         
         document.getElementById('avg-consumption').textContent = avgEfficiency.toFixed(2);
         document.getElementById('total-distance').textContent = data.stats.totalDistance.toFixed(1);
@@ -1473,16 +1612,25 @@ document.addEventListener('DOMContentLoaded', function() {
         const sortedConsumptionData = [...data.stats.consumptionData].sort((a, b) => {
             const dateA = new Date(a.date);
             const dateB = new Date(b.date);
+            console.log(`Comparing dates: ${a.date} (${dateA.toISOString()}) vs ${b.date} (${dateB.toISOString()})`);
             return dateA - dateB;
         });
         
+        // Debug: Log the sorted data to verify order
+        console.log('=== CONSUMPTION DATA SORTING DEBUG ===');
+        console.log('Original data:', data.stats.consumptionData.map(item => ({ date: item.date, consumption: item.consumption })));
+        console.log('Sorted data:', sortedConsumptionData.map(item => ({ date: item.date, consumption: item.consumption })));
+        
         // Limit to last 6 consumption data points for cleaner dashboard display
         const last6ConsumptionData = sortedConsumptionData.slice(-6);
+        console.log(`Limiting dashboard chart to last 6 consumption data points (out of ${sortedConsumptionData.length} total)`);
         
         // Use formatted dates for labels to ensure proper display
         const labels = last6ConsumptionData.map(item => 
             formatDate(item.date)
         );
+        console.log('Chart labels in order:', labels);
+        console.log('=== END SORTING DEBUG ===');
         
         // Convert from L/100km to KM/L: KM/L = 100 / (L/100km)
         const efficiencyData = last6ConsumptionData.map(item => 
@@ -1496,6 +1644,8 @@ document.addEventListener('DOMContentLoaded', function() {
         if (data.entries && data.entries.length > 0) {
             // Sort entries by date and take only entries that match our limited chart labels
             const sortedEntries = [...data.entries].sort((a, b) => new Date(a.EntryDate) - new Date(b.EntryDate));
+            
+            console.log(`Matching fuel entries to limited chart labels (${labels.length} labels)`);
             
             sortedEntries.forEach(entry => {
                 const entryDate = formatDate(entry.EntryDate);
@@ -1515,6 +1665,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             });
         }
+        
+        console.log('Fuel entry labels:', fuelEntryLabels);
+        console.log('Filtered fuel entry data:', fuelEntryData.map(f => f.x));
         
         if (consumptionChart) {
             consumptionChart.destroy();
@@ -1853,8 +2006,22 @@ document.addEventListener('DOMContentLoaded', function() {
                 const offsetMs = localDate.getTimezoneOffset() * 60000;
                 const localISOTime = new Date(localDate.getTime() - offsetMs).toISOString();
                 entryDate = localISOTime;
+                console.log(`Date conversion for backend: "${date}" -> "${entryDate}"`);
             }
         }
+        
+        console.log('Form Values:', {
+            vehicleId,
+            date,
+            entryDate,
+            odometer,
+            liters,
+            pricePerLiter,
+            totalCost,
+            calculatedTotal: liters * pricePerLiter,
+            isFullTank,
+            notes
+        });
         
         if (!vehicleId || !date || isNaN(odometer) || isNaN(liters) || isNaN(pricePerLiter)) {
             showToast('Please fill in all required fields with valid values', 'error');
@@ -1898,7 +2065,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 return;
             }
             
-            const response = await fetch(`${apiBaseUrl}/fuelEntries`, {
+            const response = await fetch(`http://localhost:7071/api/fuelEntries`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -1918,6 +2085,7 @@ document.addEventListener('DOMContentLoaded', function() {
             
             // Handle unauthorized response
             if (response.status === 401) {
+                console.log('401 Unauthorized - Token validation failed on server');
                 showToast('Session expired. Please log in again.', 'error');
                 localStorage.removeItem('fuelTrackerToken');
                 localStorage.removeItem('fuelTrackerUser');
@@ -2004,7 +2172,7 @@ document.addEventListener('DOMContentLoaded', function() {
             if (endDate) params.append('endDate', endDate.toISOString());
 
             const queryString = params.toString();
-            const url = queryString ? `${apiBaseUrl}/getFuelEntries?${queryString}` : `${apiBaseUrl}/getFuelEntries`;
+            const url = queryString ? `http://localhost:7071/api/getFuelEntries?${queryString}` : `http://localhost:7071/api/getFuelEntries`;
 
             const response = await fetch(url, {
                 headers: {
@@ -2015,6 +2183,7 @@ document.addEventListener('DOMContentLoaded', function() {
             
             // Handle unauthorized response
             if (response.status === 401) {
+                console.log('401 Unauthorized - Token validation failed on server');
                 showToast('Session expired. Please log in again.', 'error');
                 localStorage.removeItem('fuelTrackerToken');
                 handleLogout();
@@ -2028,6 +2197,23 @@ document.addEventListener('DOMContentLoaded', function() {
             
             const entries = await response.json();
             
+            console.log('=== ENTRIES RETURNED BY API ===');
+            console.log('Total entries:', entries.length);
+            entries.forEach((entry, index) => {
+                const entryDate = new Date(entry.EntryDate);
+                console.log(`Entry ${index + 1}:`, {
+                    date: entry.EntryDate,
+                    dateLocal: entryDate.toLocaleString(),
+                    dateISO: entryDate.toISOString(),
+                    vehicleId: entry.VehicleId,
+                    odometer: entry.Odometer,
+                    liters: entry.Liters,
+                    cost: entry.TotalCost,
+                    isInRange: entryDate >= startDate && entryDate <= endDate
+                });
+            });
+            console.log('=== END ENTRIES DEBUG ===');
+            
             if (entries.length === 0) {
                 showToast('No entries found for the selected criteria', 'info');
                 return;
@@ -2039,6 +2225,8 @@ document.addEventListener('DOMContentLoaded', function() {
             
             // Universal calculation function that works for any time period
             function calculateEfficiencyForPeriod(entries, periodLabel) {
+                console.log(`\n=== CALCULATING EFFICIENCY FOR ${periodLabel} ===`);
+                console.log('Total entries:', entries.length);
                 
                 // Group entries by vehicle
                 const vehicleGroups = {};
@@ -2061,6 +2249,12 @@ document.addEventListener('DOMContentLoaded', function() {
                     // Sort entries by date/time ascending (oldest first)
                     const sortedEntries = vehicleEntries.sort((a, b) => new Date(a.EntryDate) - new Date(b.EntryDate));
                     
+                    console.log(`\nVehicle ${vehicleId} (${vehicleMap[vehicleId] || 'Unknown'}):`);
+                    console.log('Sorted entries:', sortedEntries.map(e => ({
+                        date: e.EntryDate.substring(0, 16), // Show date and time
+                        odometer: e.Odometer,
+                        liters: e.Liters
+                    })));
                     
                     let vehicleDistance = 0;
                     let vehicleFuelConsumed = 0;
@@ -2076,6 +2270,8 @@ document.addEventListener('DOMContentLoaded', function() {
                             vehicleDistance += distanceSegment;
                             // The fuel consumed is from the current entry (fuel used to travel the distance)
                             vehicleFuelConsumed += currentEntry.Liters;
+                            
+                            console.log(`  Segment ${i}: ${currentEntry.Odometer} - ${previousEntry.Odometer} = ${distanceSegment} km, fuel used: ${currentEntry.Liters} L`);
                         } else if (distanceSegment < 0) {
                             console.log(`  Segment ${i}: INVALID - negative distance ${distanceSegment} km (${currentEntry.Odometer} - ${previousEntry.Odometer})`);
                         } else {
@@ -2087,6 +2283,8 @@ document.addEventListener('DOMContentLoaded', function() {
                     const vehicleFuelPurchased = vehicleEntries.reduce((sum, e) => sum + e.Liters, 0);
                     const vehicleCost = vehicleEntries.reduce((sum, e) => sum + e.TotalCost, 0);
                     
+                    console.log(`  Vehicle totals: ${vehicleDistance} km, ${vehicleFuelConsumed} L consumed, ${vehicleFuelPurchased} L purchased`);
+                    
                     // Add to overall totals
                     totalDistance += vehicleDistance;
                     totalFuelConsumed += vehicleFuelConsumed;
@@ -2094,10 +2292,17 @@ document.addEventListener('DOMContentLoaded', function() {
                     totalCost += vehicleCost;
                 });
                 
+                console.log(`\n=== ${periodLabel} TOTALS ===`);
+                console.log(`Total Distance: ${totalDistance} km`);
+                console.log(`Total Fuel Consumed (for distance): ${totalFuelConsumed} L`);
+                console.log(`Total Fuel Purchased: ${totalFuelPurchased} L`);
+                console.log(`Total Cost: ${totalCost}`);
+                
                 // Calculate efficiency
                 let efficiency = 0;
                 if (totalDistance > 0 && totalFuelConsumed > 0) {
                     efficiency = totalDistance / totalFuelConsumed;
+                    console.log(`Efficiency: ${totalDistance} ÷ ${totalFuelConsumed} = ${efficiency.toFixed(2)} KM/L`);
                 } else {
                     console.log('Cannot calculate efficiency - insufficient data');
                 }
@@ -2402,15 +2607,16 @@ document.addEventListener('DOMContentLoaded', function() {
                 return;
             }
             
-            const response = await fetch(`${apiBaseUrl}/fuelEntries/${entryId}`, {
+            const response = await fetch(`http://localhost:7071/api/fuelEntries/${entryId}`, {
                 method: 'DELETE',
                 headers: {
                     'Authorization': `Bearer ${token}`
                 }
             });
             
-            //  Handle unauthorized
+            // ✅ Handle unauthorized
             if (response.status === 401) {
+                console.log('401 Unauthorized - Token validation failed on server');
                 showToast('Session expired. Please log in again.', 'error');
                 localStorage.removeItem('fuelTrackerToken');
                 handleLogout();
@@ -2690,7 +2896,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 consumables
             };
 
-            const response = await fetch(`${apiBaseUrl}/service-addService`, {
+            const response = await fetch(`http://localhost:7071/api/service-addService`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -2744,6 +2950,8 @@ document.addEventListener('DOMContentLoaded', function() {
         if (serviceCustomRangeControls) {
             serviceCustomRangeControls.classList.add('hidden');
         }
+        
+        console.log('Set default service history period to: This Month');
     }
     
     function getServiceDateRange() {
@@ -2820,7 +3028,13 @@ document.addEventListener('DOMContentLoaded', function() {
             if (startDate) params.append('startDate', startDate);
             if (endDate) params.append('endDate', endDate);
 
-            const url = `${apiBaseUrl}/service-getServices?${params.toString()}`;
+            const url = `http://localhost:7071/api/service-getServices?${params.toString()}`;
+
+            console.log('Loading service history:', {
+                vehicleId: selectedVehicleId || 'all',
+                startDate: startDate || 'none',
+                endDate: endDate || 'none'
+            });
 
             const response = await fetch(url, {
                 headers: {
@@ -2845,13 +3059,18 @@ document.addEventListener('DOMContentLoaded', function() {
 
             const serviceRecords = data?.services || [];
 
-            // FIX: Ensure summary always exists
+            // ✅ FIX: Ensure summary always exists
             const summary = {
                 totalServices: data?.summary?.totalServices ?? serviceRecords.length,
                 totalCost: data?.summary?.totalCost ?? 0,
                 avgCost: data?.summary?.avgCost ?? 0,
                 lastServiceDate: data?.summary?.lastServiceDate ?? null
             };
+
+            console.log('Service history API response:', {
+                count: serviceRecords.length,
+                summary
+            });
 
             updateServiceHistoryStats(serviceRecords, summary);
             updateServiceHistoryTable(serviceRecords);
@@ -2870,6 +3089,14 @@ document.addEventListener('DOMContentLoaded', function() {
         const totalServiceCostElement = document.getElementById('total-service-history-cost');
         const avgServiceCostElement = document.getElementById('avg-service-cost');
         const lastServiceDateElement = document.getElementById('last-service-date');
+        
+        // Debug: Check if elements exist
+        console.log('Service history elements found:', {
+            totalServices: !!totalServicesElement,
+            totalServiceCost: !!totalServiceCostElement,
+            avgServiceCost: !!avgServiceCostElement,
+            lastServiceDate: !!lastServiceDateElement
+        });
         
         if (serviceRecords.length === 0) {
             if (totalServicesElement) totalServicesElement.textContent = '0';
@@ -2895,6 +3122,15 @@ document.addEventListener('DOMContentLoaded', function() {
         const lastServiceDate = summary?.lastServiceDate 
             ? summary.lastServiceDate 
             : (serviceRecords.length > 0 ? serviceRecords[0].ServiceDate : null);
+
+        // Debug: Log the calculated values
+        console.log('Service history stats:', {
+            totalServices,
+            totalCost,
+            avgCost,
+            lastServiceDate,
+            summary
+        });
         
         if (totalServicesElement) totalServicesElement.textContent = totalServices.toString();
         if (totalServiceCostElement) totalServiceCostElement.textContent = totalCost.toFixed(2);
@@ -3035,7 +3271,7 @@ document.addEventListener('DOMContentLoaded', function() {
             }
 
             //  No userId in query
-            const response = await fetch(`${apiBaseUrl}/service-getServices`, {
+            const response = await fetch(`http://localhost:7071/api/service-getServices`, {
                 headers: {
                     'Authorization': `Bearer ${token}`
                 }
@@ -3182,7 +3418,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 return;
             }
 
-            const response = await fetch(`${apiBaseUrl}/service-deleteService/${serviceId}`, {
+            const response = await fetch(`http://localhost:7071/api/service-deleteService/${serviceId}`, {
                 method: 'DELETE',
                 headers: {
                     'Authorization': `Bearer ${token}`
@@ -3239,7 +3475,7 @@ async function loadUserVehicles() {
             throw new Error('Authentication required');
         }
 
-        const response = await fetch(`${apiBaseUrl}/getVehicles`, {
+        const response = await fetch(`http://localhost:7071/api/getVehicles`, {
             method: 'GET',
             headers: {
                 'Authorization': `Bearer ${authToken}`
@@ -3385,7 +3621,7 @@ async function handleAddVehicle(e) {
             return;
         }
 
-        const response = await fetch(`${apiBaseUrl}/vehicles`, {
+        const response = await fetch(`http://localhost:7071/api/vehicles`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -3470,6 +3706,9 @@ function formatDateTime(dateString) {
     const year = date.getFullYear();
     const hours = String(date.getHours()).padStart(2, '0');
     const minutes = String(date.getMinutes()).padStart(2, '0');
+    
+    // Debug log to help troubleshoot timezone issues
+    console.log(`Date conversion: "${dateString}" -> "${day}-${month}-${year} ${hours}:${minutes}" (Original: ${new Date(dateString).toLocaleString()}, Adjusted: ${date.toLocaleString()})`);
     
     // Check if screen is mobile size (this is approximate)
     const isMobile = window.innerWidth <= 768;
@@ -3685,7 +3924,7 @@ document.addEventListener('DOMContentLoaded', initVehicleModal);
                 return;
             }
 
-            const response = await fetch(`${apiBaseUrl}/deleteVehicle?vehicleId=${encodeURIComponent(vehicleId)}`, {
+            const response = await fetch(`http://localhost:7071/api/deleteVehicle?vehicleId=${encodeURIComponent(vehicleId)}`, {
                 method: 'DELETE',
                 headers: {
                     'Authorization': `Bearer ${token}`
@@ -3750,7 +3989,7 @@ document.addEventListener('DOMContentLoaded', initVehicleModal);
                 return;
             }
 
-            const response = await fetch(`${apiBaseUrl}/updateProfile`, {
+            const response = await fetch(`http://localhost:7071/api/updateProfile`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -3836,7 +4075,7 @@ document.addEventListener('DOMContentLoaded', initVehicleModal);
                 return;
             }
             
-            const response = await fetch(`${apiBaseUrl}/changePassword`, {
+            const response = await fetch(`http://localhost:7071/api/changePassword`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -3851,6 +4090,7 @@ document.addEventListener('DOMContentLoaded', initVehicleModal);
             
             // Handle unauthorized response
             if (response.status === 401) {
+                console.log('401 Unauthorized - Token validation failed on server');
                 showToast('Session expired. Please log in again.', 'error');
                 localStorage.removeItem('fuelTrackerToken');
                 localStorage.removeItem('fuelTrackerUser');
