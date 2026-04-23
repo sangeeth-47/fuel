@@ -86,8 +86,18 @@ async function enablePasskey() {
 // 2. Conditional UI – triggered when username field is focused/typed
 // ------------------------------------------------------------------
 let conditionalUiActive = false;
+let passkeyAttempts = 0;
+let forcePasskeyRetry = false;
+const MAX_PASSKEY_ATTEMPTS = 2;
 
 async function setupConditionalUI() {
+    if (!forcePasskeyRetry && passkeyAttempts >= MAX_PASSKEY_ATTEMPTS) {
+        updatePasskeyButtonVisibility();
+        return;
+    }
+
+    forcePasskeyRetry = false;
+
     if (!window.PublicKeyCredential || !PublicKeyCredential.isConditionalMediationAvailable) {
         return;
     }
@@ -101,42 +111,66 @@ async function setupConditionalUI() {
     try {
         const optionsRes = await fetch(`${API_BASE}/generateAuthChallenge`, {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ conditional: true })
         });
 
         const options = await optionsRes.json();
 
-        // ✅ DO NOT MODIFY options
         const authResp = await SimpleWebAuthnBrowser.startAuthentication(options);
 
         if (!authResp) return;
 
         const verifyRes = await fetch(`${API_BASE}/verifyAuthentication`, {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                authenticationResponse: authResp
-            })
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ authenticationResponse: authResp })
         });
 
         const result = await verifyRes.json();
 
         if (result.verified && result.token) {
+            passkeyAttempts = 0;
+            updatePasskeyButtonVisibility();
+
             if (typeof window.onPasskeyLogin === 'function') {
                 window.onPasskeyLogin(result);
             }
         }
 
     } catch (error) {
+        passkeyAttempts++;
+        updatePasskeyButtonVisibility();
+
         console.log('Conditional UI dismissed:', error);
+
     } finally {
         conditionalUiActive = false;
     }
+}
+
+function updatePasskeyButtonVisibility() {
+    const btn = document.getElementById('passkey-login-btn');
+    if (!btn) return;
+
+    // Show button only when auto passkey is disabled
+    if (passkeyAttempts >= MAX_PASSKEY_ATTEMPTS) {
+        btn.style.display = 'block';
+    } else {
+        btn.style.display = 'none';
+    }
+}
+
+const passkeyLoginBtn = document.getElementById('passkey-login-btn');
+
+if (passkeyLoginBtn) {
+    passkeyLoginBtn.addEventListener('click', () => {
+        passkeyAttempts = 0;
+        forcePasskeyRetry = true;
+
+        updatePasskeyButtonVisibility(); // hide again immediately
+        setupConditionalUI();
+    });
 }
 
 // ------------------------------------------------------------------
