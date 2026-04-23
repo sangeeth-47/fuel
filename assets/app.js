@@ -46,12 +46,12 @@ document.addEventListener('DOMContentLoaded', function() {
                 const payload = JSON.parse(atob(storedToken.split('.')[1]));
                 if (payload.exp * 1000 < Date.now()) {
                     console.warn('Session expired, logging out...');
-                    handleLogout();
+                    handleLogout(false);
                     return;
                 }
             } catch (err) {
                 console.error('Error decoding token:', err);
-                handleLogout();
+                handleLogout(false);
                 return;
             }
             showMainScreen();
@@ -61,8 +61,7 @@ document.addEventListener('DOMContentLoaded', function() {
             showAuthScreen();
         }
     } else {
-        handleLogout(); // Ensure clean state
-        showAuthScreen();
+        handleLogout(false); // Ensure clean state without showing a logout toast
     }
     
     // Set up event listeners
@@ -689,14 +688,16 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
     
-    function handleLogout() {
+    function handleLogout(showToastMessage = true) {
         currentUser = null;
         authToken = null;
         dashboardLoaded = false; // Reset dashboard loaded flag
         localStorage.removeItem('fuelTrackerUser');
         localStorage.removeItem('fuelTrackerToken');
         showAuthScreen();
-        showToast('Logged out successfully', 'success');
+        if (showToastMessage) {
+            showToast('Logged out successfully', 'success');
+        }
     }
     
     // UI functions
