@@ -88,7 +88,7 @@ async function enablePasskey() {
 let conditionalUiActive = false;
 let passkeyAttempts = 0;
 let forcePasskeyRetry = false;
-const MAX_PASSKEY_ATTEMPTS = 2;
+const MAX_PASSKEY_ATTEMPTS = 1;
 
 async function setupConditionalUI() {
     if (!forcePasskeyRetry && passkeyAttempts >= MAX_PASSKEY_ATTEMPTS) {
@@ -195,7 +195,7 @@ async function loginWithPasskey() {
 
         const options = await optionsRes.json();
 
-        // ✅ DO NOT MODIFY options
+        // DO NOT MODIFY options
         const authResp = await SimpleWebAuthnBrowser.startAuthentication(options);
 
         const verifyRes = await fetch(`${API_BASE}/verifyAuthentication`, {
