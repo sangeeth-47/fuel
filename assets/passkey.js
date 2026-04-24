@@ -120,7 +120,10 @@ async function setupConditionalUI() {
 
         const options = await optionsRes.json();
 
-        const authResp = await SimpleWebAuthnBrowser.startAuthentication(options);
+        const authResp = await SimpleWebAuthnBrowser.startAuthentication({
+        optionsJSON: options,
+        useBrowserAutofill: true
+        });
 
         if (!authResp) return;
 
@@ -140,6 +143,8 @@ async function setupConditionalUI() {
                 window.onPasskeyLogin(result);
             }
         }
+        
+        if (!optionsRes.ok) throw new Error('Failed to get auth options');
 
     } catch (error) {
         passkeyAttempts++;
@@ -199,7 +204,9 @@ async function loginWithPasskey() {
         const options = await optionsRes.json();
 
         // DO NOT MODIFY options
-        const authResp = await SimpleWebAuthnBrowser.startAuthentication(options);
+        const authResp = await SimpleWebAuthnBrowser.startAuthentication({
+        optionsJSON: options
+        });
 
         const verifyRes = await fetch(`${API_BASE}/verifyAuthentication`, {
             method: 'POST',
