@@ -56,8 +56,11 @@ async function enablePasskey() {
 
         const options = await optionsRes.json();
 
-        // ✅ DO NOT MODIFY options
-        const attResp = await SimpleWebAuthnBrowser.startRegistration(options);
+        //  DO NOT MODIFY options
+        // const attResp = await SimpleWebAuthnBrowser.startRegistration(options);
+        const attResp = await SimpleWebAuthnBrowser.startRegistration({
+            optionsJSON: options
+        });
 
         const verifyRes = await fetch(`${API_BASE}/verifyRegistration`, {
             method: 'POST',
