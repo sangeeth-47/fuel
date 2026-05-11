@@ -559,7 +559,10 @@ document.addEventListener('DOMContentLoaded', function() {
         localStorage.setItem('passkeyLoggedIn', 'true');
         
         const enableBtn = document.getElementById('enable-passkey-btn');
-        if (enableBtn) enableBtn.style.display = 'block';
+            if (enableBtn) {
+            enableBtn.style.display = 'block';
+            enableBtn.classList.add('passkey-active');
+        }
         
         showMainScreen();
         loadDashboard();
