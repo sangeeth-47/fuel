@@ -556,6 +556,7 @@ document.addEventListener('DOMContentLoaded', function() {
         authToken = result.token;
         localStorage.setItem('fuelTrackerToken', result.token);
         localStorage.setItem('fuelTrackerUser', JSON.stringify(currentUser));
+        localStorage.setItem('passkeyLoggedIn', 'true');
         
         const enableBtn = document.getElementById('enable-passkey-btn');
         if (enableBtn) enableBtn.style.display = 'block';

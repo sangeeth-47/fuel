@@ -785,6 +785,15 @@ body {
     color: var(--primary-color);
 }
 
+/* Passkey active state */
+.btn-icon.passkey-active {
+    color: #16a34a;
+}
+
+.btn-icon.passkey-active:hover {
+    color: #15803d;
+}
+
 .app-nav {
     display: flex;
     border-bottom: 1px solid var(--border-color);
