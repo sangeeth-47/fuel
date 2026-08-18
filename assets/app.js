@@ -805,6 +805,40 @@ document.addEventListener('DOMContentLoaded', function() {
     function hideLoading() {
         loadingOverlay.classList.add('hidden');
     }
+
+    function formatLastOilChangeDistance(distanceSinceLastOilChange) {
+        if (distanceSinceLastOilChange === null || distanceSinceLastOilChange === undefined || distanceSinceLastOilChange === '') {
+            return '--';
+        }
+
+        if (typeof distanceSinceLastOilChange === 'number') {
+            return `${distanceSinceLastOilChange.toLocaleString()} km`;
+        }
+
+        if (typeof distanceSinceLastOilChange === 'string') {
+            const normalizedValue = distanceSinceLastOilChange.trim();
+
+            if (normalizedValue.toUpperCase() === 'N/A') {
+                return 'N/A';
+            }
+
+            const numericValue = Number(normalizedValue);
+            if (!Number.isNaN(numericValue)) {
+                return `${numericValue.toLocaleString()} km`;
+            }
+
+            return normalizedValue;
+        }
+
+        return String(distanceSinceLastOilChange);
+    }
+
+    function setLastOilChangeStat(distanceSinceLastOilChange) {
+        const statElement = document.getElementById('last-oil-change-km');
+        if (statElement) {
+            statElement.textContent = formatLastOilChangeDistance(distanceSinceLastOilChange);
+        }
+    }
     
     // Helper function to reposition all toasts after one is removed
     function repositionToasts() {
@@ -981,6 +1015,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 document.getElementById('total-distance').textContent = '--';
                 document.getElementById('total-fuel').textContent = '--';
                 document.getElementById('total-cost').textContent = '--';
+                setLastOilChangeStat('--');
                 
                 if (consumptionChart) {
                     consumptionChart.destroy();
@@ -1130,6 +1165,16 @@ document.addEventListener('DOMContentLoaded', function() {
                 'Content-Type': 'application/json'
             }
         });
+
+        const oilChangeResponsePromise = fetch(`${apiBaseUrl}/getOilChangeStats?vehicleId=${vehicleId}`, {
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            }
+        }).catch(error => {
+            console.warn(`Failed to start oil change stats request for vehicle ${vehicleId}:`, error);
+            return null;
+        });
         
         // Handle unauthorized response
         if (response.status === 401) {
@@ -1154,6 +1199,14 @@ document.addEventListener('DOMContentLoaded', function() {
         }
         
         const data = await response.json();
+        const oilChangeResponse = await oilChangeResponsePromise;
+        let oilChangeData = null;
+
+        if (oilChangeResponse && oilChangeResponse.ok) {
+            oilChangeData = await oilChangeResponse.json();
+        } else if (oilChangeResponse) {
+            console.warn(`Failed to load oil change stats for vehicle ${vehicleId}`);
+        }
         
         // Add detailed odometer analysis
         if (data.entries && data.entries.length > 0) {
@@ -1243,6 +1296,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 document.getElementById('total-distance').textContent = totalDistance;
                 document.getElementById('total-fuel').textContent = totalLiters.toFixed(1);
                 document.getElementById('total-cost').textContent = totalCost.toFixed(2);
+                setLastOilChangeStat(oilChangeData?.distanceSinceLastOilChange);
 
                 // Reset trend display if no efficiency calculated
                 if (avgEfficiency === '--') {
@@ -1266,6 +1320,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 document.getElementById('total-distance').textContent = '--';
                 document.getElementById('total-fuel').textContent = '--';
                 document.getElementById('total-cost').textContent = '--';
+                setLastOilChangeStat(oilChangeData?.distanceSinceLastOilChange);
 
                 // Reset trend display
                 const trendElement = document.getElementById('consumption-trend');
@@ -1420,6 +1475,7 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('total-distance').textContent = data.stats.totalDistance.toFixed(1);
         document.getElementById('total-fuel').textContent = data.stats.totalLiters.toFixed(1);
         document.getElementById('total-cost').textContent = data.stats.totalCost.toFixed(2);
+        setLastOilChangeStat(oilChangeData?.distanceSinceLastOilChange);
         
         // Calculate and display consumption trend (percentage change from last fueling)
         const trendElement = document.getElementById('consumption-trend');
