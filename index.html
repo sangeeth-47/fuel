@@ -284,7 +284,16 @@
                         
                         <div class="form-row">
                             <div class="form-group">
-                                <label for="service-type">Service Type</label>
+                                <div class="service-type-header">
+                                    <label for="service-type">Service Type</label>
+                                    <span class="service-oil-change-inline hidden" id="service-oil-change-group">
+                                        <label class="service-oil-change-toggle" title="Enable this when the service includes an oil change.">
+                                            <input type="checkbox" id="service-is-oil-change">
+                                            <span>Has Oil Change</span>
+                                            <span class="service-oil-change-help" aria-hidden="true">i</span>
+                                        </label>
+                                    </span>
+                                </div>
                                 <select id="service-type" required>
                                     <option value="">Select service type</option>
                                     <option value="Regular Maintenance">Regular Maintenance</option>
