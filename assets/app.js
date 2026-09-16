@@ -1260,9 +1260,11 @@ document.addEventListener('DOMContentLoaded', function() {
              * conversion is required.
              */
             const trendElement = document.getElementById('consumption-trend');
-            const populatedChartPoints = chartData.filter(
-                point => point.efficiency != null && Number(point.efficiency) > 0
-            );
+            const populatedChartPoints = chartData
+                .filter(
+                    point => point.efficiency != null && Number(point.efficiency) > 0
+                )
+                .sort((a, b) => new Date(a.date) - new Date(b.date));
 
             if (populatedChartPoints.length >= 2) {
                 const lastEfficiency =
@@ -1303,41 +1305,72 @@ document.addEventListener('DOMContentLoaded', function() {
 
             /*
              * Dashboard chart:
-             * API supplies exactly six monthly points.
-             * A month without fuel data has efficiency = null.
+             *
+             * chartData contains ONE point per fueling event. This preserves
+             * partial fuelings as separate points.
+             *
+             * The x-axis is explicitly pinned to the six calendar months
+             * ending in the current month. Months without fuel entries remain
+             * visible because the axis range is fixed rather than derived
+             * from the data points.
              */
             if (consumptionChart) {
                 consumptionChart.destroy();
             }
 
-            const labels = chartData.map(point => {
-                const date = new Date(point.date);
-                return date.toLocaleDateString(undefined, {
-                    month: 'short',
-                    year: 'numeric'
-                });
-            });
+            const now = new Date();
 
-            const efficiencyData = chartData.map(point =>
-                point.efficiency == null ? null : Number(point.efficiency)
+            const sixMonthStart = new Date(
+                now.getFullYear(),
+                now.getMonth() - 5,
+                1
             );
+
+            const sixMonthEnd = new Date(
+                now.getFullYear(),
+                now.getMonth() + 1,
+                0,
+                23,
+                59,
+                59,
+                999
+            );
+
+            const sixMonthEntries = chartData
+                .filter(point => {
+                    const date = new Date(point.date);
+                    return date >= sixMonthStart && date <= sixMonthEnd;
+                })
+                .sort((a, b) => new Date(a.date) - new Date(b.date));
+
+            const chartPoints = sixMonthEntries
+                .filter(point =>
+                    point.efficiency != null &&
+                    Number.isFinite(Number(point.efficiency))
+                )
+                .map(point => ({
+                    x: new Date(point.date).getTime(),
+                    y: Number(point.efficiency),
+                    entry: point
+                }));
 
             const ctx = document.getElementById('consumption-chart').getContext('2d');
 
             consumptionChart = new Chart(ctx, {
                 type: 'line',
                 data: {
-                    labels,
                     datasets: [{
                         label: 'Fuel Efficiency (KM/L)',
-                        data: efficiencyData,
+                        data: chartPoints,
+                        parsing: false,
                         borderColor: 'rgb(75, 192, 192)',
                         backgroundColor: 'rgba(75, 192, 192, 0.1)',
                         tension: 0.2,
                         fill: false,
                         spanGaps: false,
                         pointRadius: 5,
-                        pointHoverRadius: 7
+                        pointHoverRadius: 7,
+                        showLine: true
                     }]
                 },
                 options: {
@@ -1349,11 +1382,21 @@ document.addEventListener('DOMContentLoaded', function() {
                     },
                     scales: {
                         x: {
-                            type: 'category',
+                            type: 'linear',
+                            min: sixMonthStart.getTime(),
+                            max: sixMonthEnd.getTime(),
                             display: true,
                             title: {
                                 display: true,
-                                text: 'Month'
+                                text: 'Last 6 Months'
+                            },
+                            ticks: {
+                                callback: function(value) {
+                                    return new Date(value).toLocaleDateString(undefined, {
+                                        month: 'short',
+                                        year: 'numeric'
+                                    });
+                                }
                             }
                         },
                         y: {
@@ -1370,25 +1413,31 @@ document.addEventListener('DOMContentLoaded', function() {
                     plugins: {
                         title: {
                             display: true,
-                            text: chartData.some(point => point.efficiency != null)
+                            text: chartPoints.length > 0
                                 ? 'Fuel Efficiency - Last 6 Months'
                                 : 'No fuel data in the last 6 months'
                         },
                         tooltip: {
                             callbacks: {
-                                label: function(context) {
-                                    const point = chartData[context.dataIndex];
-
-                                    if (!point || point.efficiency == null) {
-                                        return 'No fuel data';
+                                title: function(items) {
+                                    if (!items.length) {
+                                        return '';
                                     }
 
-                                    return `Efficiency: ${Number(point.efficiency).toFixed(2)} KM/L`;
+                                    return new Date(items[0].parsed.x)
+                                        .toLocaleDateString(undefined, {
+                                            day: '2-digit',
+                                            month: 'short',
+                                            year: 'numeric'
+                                        });
+                                },
+                                label: function(context) {
+                                    return `Efficiency: ${Number(context.parsed.y).toFixed(2)} KM/L`;
                                 },
                                 afterLabel: function(context) {
-                                    const point = chartData[context.dataIndex];
+                                    const point = context.raw?.entry;
 
-                                    if (!point || point.efficiency == null) {
+                                    if (!point) {
                                         return [];
                                     }
 
@@ -1396,7 +1445,7 @@ document.addEventListener('DOMContentLoaded', function() {
                                         `Distance: ${Number(point.distance || 0).toFixed(1)} km`,
                                         `Fuel: ${Number(point.liters || 0).toFixed(2)} L`,
                                         `Cost: ${Number(point.cost || 0).toFixed(2)}`,
-                                        `Entries: ${Number(point.entryCount || 0)}`
+                                        `Tank: ${point.isFullTank ? 'Full' : 'Partial'}`
                                     ];
                                 }
                             }
