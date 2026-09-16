@@ -255,6 +255,7 @@ window.addEventListener('load', () => {
 
     // Set up Conditional UI listeners
     if (usernameField) {
+        setupConditionalUI();
         usernameField.addEventListener('focus', setupConditionalUI);
         usernameField.addEventListener('input', debounce(setupConditionalUI, 300));
     }
