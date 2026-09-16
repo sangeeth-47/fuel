@@ -1001,28 +1001,6 @@ document.addEventListener('DOMContentLoaded', function() {
 
             userVehicles = await vehiclesResponse.json();
             
-            // For each vehicle, try to get the latest odometer reading
-            for (let vehicle of userVehicles) {
-                try {
-                    const statsResponse = await fetch(`${apiBaseUrl}/getFuelStats?vehicleId=${vehicle.VehicleId}`, {
-                        headers: {
-                            'Authorization': `Bearer ${localStorage.getItem('fuelTrackerToken')}`
-                        }
-                    });
-                    if (statsResponse.ok) {
-                        const statsData = await statsResponse.json();
-                        if (statsData.entries && statsData.entries.length > 0) {
-                            // Find the latest odometer reading
-                            const latestEntry = statsData.entries
-                                .sort((a, b) => new Date(b.EntryDate) - new Date(a.EntryDate))[0];
-                            vehicle.lastOdometer = latestEntry.Odometer;
-                        }
-                    }
-                } catch (error) {
-                    console.warn(`Failed to get latest odometer for vehicle ${vehicle.VehicleId}:`, error);
-                }
-            }
-            
             // Populate vehicle selectors
             populateVehicleSelectors();
             
@@ -1229,6 +1207,14 @@ document.addEventListener('DOMContentLoaded', function() {
         const data = await response.json();
         const oilChangeResponse = await oilChangeResponsePromise;
         let oilChangeData = null;
+
+        if (data.entries && data.entries.length > 0) {
+            const latestEntry = [...data.entries].sort((a, b) => new Date(b.EntryDate) - new Date(a.EntryDate))[0];
+            const vehicle = userVehicles.find(item => String(item.VehicleId) === String(vehicleId));
+            if (vehicle) {
+                vehicle.lastOdometer = latestEntry.Odometer;
+            }
+        }
 
         if (oilChangeResponse && oilChangeResponse.ok) {
             oilChangeData = await oilChangeResponse.json();
