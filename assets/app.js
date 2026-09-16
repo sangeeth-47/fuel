@@ -294,28 +294,6 @@ document.addEventListener('DOMContentLoaded', function() {
         const serviceForm = document.getElementById('service-form');
         if (serviceForm) {
             serviceForm.addEventListener('submit', handleServiceSubmit);
-
-            const serviceTypeInput = document.getElementById('service-type');
-            const serviceOilChangeGroup = document.getElementById('service-oil-change-group');
-            const serviceOilChangeInput = document.getElementById('service-is-oil-change');
-
-            const updateServiceOilChangeState = function() {
-                if (!serviceTypeInput || !serviceOilChangeGroup || !serviceOilChangeInput) {
-                    return;
-                }
-
-                const selectedServiceType = serviceTypeInput.value;
-                const isOilChangeService = selectedServiceType === 'Oil Change';
-                const showOilChangeToggle = Boolean(selectedServiceType) && !isOilChangeService;
-
-                serviceOilChangeGroup.classList.toggle('hidden', !showOilChangeToggle);
-                serviceOilChangeInput.checked = isOilChangeService;
-            };
-
-            if (serviceTypeInput) {
-                serviceTypeInput.addEventListener('change', updateServiceOilChangeState);
-                updateServiceOilChangeState();
-            }
             
             // Set current date for service
             const serviceDateInput = document.getElementById('service-date');
@@ -346,12 +324,6 @@ document.addEventListener('DOMContentLoaded', function() {
                     setTimeout(() => {
                         // Reset date to today
                         serviceDateInput.value = new Date().toISOString().split('T')[0];
-                        if (serviceOilChangeInput) {
-                            serviceOilChangeInput.checked = false;
-                        }
-                        if (serviceOilChangeGroup) {
-                            serviceOilChangeGroup.classList.add('hidden');
-                        }
                         // Clear consumables and restore placeholder
                         const consumablesList = document.getElementById('consumables-list');
                         consumablesList.innerHTML = '<div class="no-consumables"><p>No consumables added yet. Click "Add Item" to add parts and materials used in this service.</p></div>';
@@ -2712,7 +2684,6 @@ document.addEventListener('DOMContentLoaded', function() {
         const vehicleId = document.getElementById('service-vehicle').value;
         const serviceDate = document.getElementById('service-date').value;
         const serviceType = document.getElementById('service-type').value;
-        const serviceOilChangeInput = document.getElementById('service-is-oil-change');
         const billNumber = document.getElementById('service-bill-number').value;
         const odometer = parseFloat(document.getElementById('service-odometer').value) || null;
         const laborCost = parseFloat(document.getElementById('labor-cost').value) || 0;
@@ -2726,7 +2697,6 @@ document.addEventListener('DOMContentLoaded', function() {
 
         const consumables = [];
         const consumableItems = document.querySelectorAll('.consumable-item');
-        const isOilChange = serviceType === 'Oil Change' ? true : Boolean(serviceOilChangeInput && serviceOilChangeInput.checked);
 
         consumableItems.forEach(item => {
             const name = item.querySelector('input[id$="-name"]').value;
@@ -2759,7 +2729,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 vehicleId,
                 serviceDate,
                 serviceType,
-                isOilChange,
                 billNumber,
                 odometer,
                 laborCost,
