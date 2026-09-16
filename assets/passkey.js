@@ -253,8 +253,10 @@ window.addEventListener('load', () => {
         if (enableBtn) enableBtn.style.display = 'block';
     }
 
-    // Set up Conditional UI listeners
+    // Run the passkey conditional check automatically on the login page load.
+    // This allows autofill/passkey detection before the user interacts with the field.
     if (usernameField) {
+        setupConditionalUI();
         usernameField.addEventListener('focus', setupConditionalUI);
         usernameField.addEventListener('input', debounce(setupConditionalUI, 300));
     }
