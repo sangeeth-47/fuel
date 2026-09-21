@@ -9,7 +9,7 @@ document.addEventListener('DOMContentLoaded', function() {
     let dashboardLoaded = false; // Track if dashboard has been loaded
     
     // API configuration
-    const apiBaseUrl = 'https://api.sangeeth47.in/api';
+    const apiBaseUrl = 'http://localhost:7071/api';
     
     // DOM elements
     const authScreen = document.getElementById('auth-screen');
@@ -1903,88 +1903,78 @@ if (endDate) {
             const vehicleMap = {};
             userVehicles.forEach(v => vehicleMap[v.VehicleId] = `${v.Make} ${v.Model}`);
             
-            // Universal calculation function that works for any time period
-            function calculateEfficiencyForPeriod(entries, periodLabel) {
-                
-                // Group entries by vehicle
-                const vehicleGroups = {};
-                entries.forEach(entry => {
-                    if (!vehicleGroups[entry.VehicleId]) {
-                        vehicleGroups[entry.VehicleId] = [];
-                    }
-                    vehicleGroups[entry.VehicleId].push(entry);
-                });
-                
-                let totalDistance = 0;
-                let totalFuelConsumed = 0;
-                let totalFuelPurchased = 0;
+            // Mileage is calculated by the API using full-tank -> full-tank
+            // intervals. Do not recalculate mileage from the filtered entries
+            // in the browser, because the previous full-tank entry may be
+            // outside the selected report date range.
+            //
+            // API contract:
+            //   IsFullTank = true  + Mileage number -> calculated mileage
+            //   IsFullTank = true  + Mileage null   -> no previous full tank
+            //   IsFullTank = false                  -> partial fill; always --
+            function getApiMileage(entry) {
+                if (!entry || entry.IsFullTank !== true) {
+                    return null;
+                }
+
+                const mileage = Number(entry.Mileage);
+
+                return Number.isFinite(mileage) && mileage >= 0
+                    ? mileage
+                    : null;
+            }
+
+            // Group entries by vehicle/month for the report chart. The chart
+            // uses only valid API-calculated full-tank mileage values.
+            // Partial entries remain visible in the table but never affect
+            // the mileage calculation.
+            function calculateEfficiencyForPeriod(periodEntries) {
                 let totalCost = 0;
-                
-                // Calculate for each vehicle using segment-based approach
-                Object.keys(vehicleGroups).forEach(vehicleId => {
-                    const vehicleEntries = vehicleGroups[vehicleId];
-                    
-                    // Sort entries by date/time ascending (oldest first)
-                    const sortedEntries = vehicleEntries.sort((a, b) => new Date(a.EntryDate) - new Date(b.EntryDate));
-                    
-                    
-                    let vehicleDistance = 0;
-                    let vehicleFuelConsumed = 0;
-                    
-                    // Calculate distance per refuel: newer odometer - previous odometer
-                    for (let i = 1; i < sortedEntries.length; i++) {
-                        const currentEntry = sortedEntries[i];
-                        const previousEntry = sortedEntries[i - 1];
-                        
-                        const distanceSegment = currentEntry.Odometer - previousEntry.Odometer;
-                        
-                        if (distanceSegment > 0) {
-                            vehicleDistance += distanceSegment;
-                            // The fuel consumed is from the current entry (fuel used to travel the distance)
-                            vehicleFuelConsumed += currentEntry.Liters;
-                        } else if (distanceSegment < 0) {
-                            console.log(`  Segment ${i}: INVALID - negative distance ${distanceSegment} km (${currentEntry.Odometer} - ${previousEntry.Odometer})`);
-                        } else {
-                            console.log(`  Segment ${i}: No distance change (${currentEntry.Odometer} - ${previousEntry.Odometer} = 0 km)`);
+                let totalFuelPurchased = 0;
+                let totalDistance = 0;
+                let validMileageCount = 0;
+
+                periodEntries.forEach(entry => {
+                    totalCost += Number(entry.TotalCost) || 0;
+                    totalFuelPurchased += Number(entry.Liters) || 0;
+
+                    const mileage = getApiMileage(entry);
+
+                    if (mileage !== null) {
+                        const liters = Number(entry.Liters) || 0;
+                        if (liters > 0) {
+                            totalDistance += mileage * liters;
+                            validMileageCount++;
                         }
                     }
-                    
-                    // Calculate totals for this vehicle
-                    const vehicleFuelPurchased = vehicleEntries.reduce((sum, e) => sum + e.Liters, 0);
-                    const vehicleCost = vehicleEntries.reduce((sum, e) => sum + e.TotalCost, 0);
-                    
-                    // Add to overall totals
-                    totalDistance += vehicleDistance;
-                    totalFuelConsumed += vehicleFuelConsumed;
-                    totalFuelPurchased += vehicleFuelPurchased;
-                    totalCost += vehicleCost;
                 });
-                
-                // Calculate efficiency
-                let efficiency = 0;
-                if (totalDistance > 0 && totalFuelConsumed > 0) {
-                    efficiency = totalDistance / totalFuelConsumed;
-                } else {
-                    console.log('Cannot calculate efficiency - insufficient data');
-                }
-                
+
+                const efficiency = validMileageCount > 0 && totalFuelPurchased > 0
+                    ? totalDistance / periodEntries
+                        .filter(entry => getApiMileage(entry) !== null)
+                        .reduce((sum, entry) => sum + (Number(entry.Liters) || 0), 0)
+                    : null;
+
                 return {
-                    totalDistance,
-                    totalFuelConsumed,
-                    totalFuelPurchased,
+                    totalLiters: totalFuelPurchased,
                     totalCost,
+                    totalDistance,
                     efficiency
                 };
             }
-            
+
             // Determine grouping strategy based on period
             let groupedData = {};
             
             if (period === 'month' || period === 'year') {
                 // Group by month for chart display
                 entries.forEach(entry => {
-                    const date = new Date(entry.EntryDate);
-                    const monthYear = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+                    const date = parseApiDateAsEntered(entry.EntryDate);
+                    const monthYear = date
+                        ? `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
+                        : null;
+
+                    if (!monthYear) return;
                     
                     if (!groupedData[monthYear]) {
                         groupedData[monthYear] = [];
@@ -2186,44 +2176,29 @@ if (endDate) {
                     }
                 }
                 
-                // Only calculate consumption for full tank entries
-                if (entry.IsFullTank) {
-                    // Use the same vehicle entries list, but sorted by date (newest first) for consumption calculation
-                    const vehicleEntriesNewestFirst = entries.filter(e => e.VehicleId === entry.VehicleId)
-                        .sort((a, b) => new Date(b.EntryDate) - new Date(a.EntryDate));
-                    
-                    // Find the current entry's position in the sorted list
-                    const currentIndexNewest = vehicleEntriesNewestFirst.findIndex(e => 
-                        e.EntryDate === entry.EntryDate && e.Odometer === entry.Odometer
-                    );
-                    
-                    // Look for the next entry chronologically (previous in our sorted list)
-                    if (currentIndexNewest < vehicleEntriesNewestFirst.length - 1) {
-                        const nextEntry = vehicleEntriesNewestFirst[currentIndexNewest + 1];
-                        
-                        // Check if the next entry is also a full tank
-                        if (nextEntry.IsFullTank) {
-                            // Check if there are any non-full tank entries between these two
-                            const entriesBetween = vehicleEntriesNewestFirst.slice(currentIndexNewest + 1)
-                                .filter(e => 
-                                    new Date(e.EntryDate) > new Date(nextEntry.EntryDate) &&
-                                    new Date(e.EntryDate) < new Date(entry.EntryDate)
-                                );
-                            
-                            // Only show consumption if there are no non-full tank entries in between
-                            const hasNonFullTankBetween = entriesBetween.some(e => !e.IsFullTank);
-                            
-                            if (!hasNonFullTankBetween) {
-                                const distance = entry.Odometer - nextEntry.Odometer;
-                                if (distance > 0) {
-                                    // Calculate KM/L: distance traveled since last fill-up / fuel used in current fill-up
-                                    consumption = (distance / entry.Liters).toFixed(2) + ' KM/L';
-                                }
-                            }
-                        }
-                    }
+            // Mileage comes directly from the API.
+            //
+            // Initial fuel entry:
+            //     "Initial FUEL Entry"
+            //
+            // Partial fuel entry:
+            //     "--"
+            //
+            // Full-tank entry with a previous full-tank interval:
+            //     calculated KM/L
+            //
+            // Full-tank entry without a previous full-tank interval:
+            //     "--"
+            if (entry.IsInitialEntry === true) {
+                consumption = 'First Fuel Entry';
+            } else {
+                const apiMileage = getApiMileage(entry);
+
+                if (apiMileage !== null) {
+                    consumption = `${apiMileage.toFixed(2)} KM/L`;
                 }
-                
+            }
+
                 const row = document.createElement('tr');
 
                 if (entry.IsFullTank === true) {
