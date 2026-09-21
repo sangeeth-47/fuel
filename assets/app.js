@@ -9,7 +9,7 @@ document.addEventListener('DOMContentLoaded', function() {
     let dashboardLoaded = false; // Track if dashboard has been loaded
     
     // API configuration
-    const apiBaseUrl = 'http://localhost:7071/api';
+    const apiBaseUrl = 'https://api.sangeeth47.in/api';
     
     // DOM elements
     const authScreen = document.getElementById('auth-screen');
@@ -1161,7 +1161,7 @@ document.addEventListener('DOMContentLoaded', function() {
             // six-month chart. It does not return the complete FuelEntries
             // table.
             const response = await fetch(
-                `http://localhost:7071/api/getFuelStats?vehicleId=${encodeURIComponent(vehicleId)}`,
+                `${apiBaseUrl}/getFuelStats?vehicleId=${encodeURIComponent(vehicleId)}`,
                 {
                     headers: {
                         'Authorization': `Bearer ${token}`,
