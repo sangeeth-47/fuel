@@ -1187,7 +1187,7 @@ table tr:hover {
 /* Reports tab header - center title with proper spacing */
 #reports-tab .tab-header h2 {
     text-align: center;
-    margin-right: 2rem;
+    margin-right: 15px;
 }
 
 /* Service History tab header - center title with proper spacing */
@@ -1823,7 +1823,8 @@ table tr:hover {
     #reports-tab .tab-header h2,
     #service-history-tab .tab-header h2 {
         text-align: center;
-        margin-right: 0;
+        margin-left: 15px;
+        margin-right: 5px;
         width: 100%;
     }
     
@@ -2079,6 +2080,124 @@ table td:last-child {
 table th:last-child {
     text-align: center;
     width: 80px;
+}
+
+/* Fuel Reports title + legend */
+.report-title {
+    position: relative;
+    display: flex;
+    align-items: center;
+    /* gap: 8px; */
+}
+
+.report-title h2 {
+    margin: 0;
+}
+
+.report-info-btn {
+    margin: 0px 20px 0px 0px;
+    width: 20px;
+    height: 20px;
+    padding: 0;
+    min-width: 20px;
+    min-height: 20px;
+
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+
+    flex: 0 0 20px;
+    aspect-ratio: 1 / 1;
+    box-sizing: border-box;
+    line-height: 1;
+
+    appearance: none;
+    -webkit-appearance: none;
+
+    border: 1px solid #777;
+    border-radius: 50%;
+
+    background: transparent;
+    color: #555;
+
+    font-family: serif;
+    font-size: 13px;
+    font-weight: 600;
+
+    cursor: pointer;
+}
+
+.report-info-btn:hover {
+    background: #f5f5f5;
+}
+
+.report-legend {
+    position: absolute;
+    top: calc(100% + 8px);
+    left: 0;
+
+    display: none;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
+
+    z-index: 1000;
+
+    padding: 8px 12px;
+
+    background: #fff;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+
+    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.12);
+
+    font-size: 13px;
+    white-space: nowrap;
+}
+
+.report-legend.visible {
+    display: flex;
+}
+
+.legend-item {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+}
+.legend-description {
+    margin-left: 19px;
+}
+
+.legend-color {
+    width: 12px;
+    height: 12px;
+
+    display: inline-block;
+
+    background: #e8f5e9;
+    border: 1px solid #c8e6c9;
+    border-radius: 2px;
+}
+
+/* Full-tank report rows */
+#report-table tbody tr.full-tank-row {
+    background-color: #e8f5e9;
+}
+
+#report-table tbody tr.full-tank-row:hover {
+    background-color: #dceddf;
+}
+
+#report-table tbody tr.full-tank-row {
+    background-color: #e8f5e9 !important;
+}
+
+#report-table tbody tr.full-tank-row td {
+    background-color: #e8f5e9 !important;
+}
+
+#report-table tbody tr.full-tank-row:hover td {
+    background-color: #dceddf !important;
 }
 
 /* Make buttons smaller on mobile */

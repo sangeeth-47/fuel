@@ -431,7 +431,31 @@
                 <!-- Reports Tab -->
                 <div id="reports-tab" class="content-tab">
                     <div class="tab-header">
-                        <h2>Fuel Reports</h2>
+                        <div class="report-title">
+                            <h2>Fuel Reports</h2>
+
+                            <button
+                                type="button"
+                                class="report-info-btn"
+                                id="fuel-report-info"
+                                aria-label="Fuel Reports legend"
+                                title="Green rows indicate full-tank fuel entries."
+                            >
+                                i
+                            </button>
+
+                                <div class="report-legend" id="fuel-report-legend">
+                                <div class="legend-item">
+                                    <span class="legend-color"></span>
+                                    <span>Full-Tank Fuel Entry</span>
+                                </div>
+
+                                <div class="legend-description">
+                                    <span>Null = No Previous Full-Tank Entry</span>
+                                </div>
+                            </div>
+                        </div>
+
                         <div class="report-controls">
                             <select id="report-vehicle-select">
                                 <option value="">All Vehicles</option>
@@ -477,7 +501,7 @@
                                 </thead>
                                 <tbody>
                                     <tr>
-                                        <td colspan="8">No data available. Generate a report first.</td>
+                                        <td colspan="9">No data available. Generate a report first.</td>
                                     </tr>
                                 </tbody>
                             </table>

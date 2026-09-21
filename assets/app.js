@@ -1633,6 +1633,9 @@ document.addEventListener('DOMContentLoaded', function() {
                     const distance = Number(entry.DistanceKm || 0);
 
                     const row = document.createElement('tr');
+                    if (entry.IsFullTank === true) {
+                        row.classList.add('full-tank-row');
+                    }
                     row.innerHTML = `
                         <td>${formatDateTime(entry.EntryDate)}</td>
                         <td>${Number(entry.Odometer).toFixed(1)}</td>
@@ -1830,9 +1833,41 @@ document.addEventListener('DOMContentLoaded', function() {
 
             const params = new URLSearchParams();
 
-            if (vehicleId) params.append('vehicleId', vehicleId);
-            if (startDate) params.append('startDate', startDate.toISOString());
-            if (endDate) params.append('endDate', endDate.toISOString());
+if (vehicleId) {
+    params.append('vehicleId', vehicleId);
+}
+
+if (startDate) {
+    const startUtc = new Date(
+        Date.UTC(
+            startDate.getFullYear(),
+            startDate.getMonth(),
+            startDate.getDate(),
+            0,
+            0,
+            0,
+            0
+        )
+    );
+
+    params.append('startDate', startUtc.toISOString());
+}
+
+if (endDate) {
+    const endUtc = new Date(
+        Date.UTC(
+            endDate.getFullYear(),
+            endDate.getMonth(),
+            endDate.getDate(),
+            23,
+            59,
+            59,
+            999
+        )
+    );
+
+    params.append('endDate', endUtc.toISOString());
+}
 
             const queryString = params.toString();
             const url = queryString ? `${apiBaseUrl}/getFuelEntries?${queryString}` : `${apiBaseUrl}/getFuelEntries`;
@@ -2190,6 +2225,11 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
                 
                 const row = document.createElement('tr');
+
+                if (entry.IsFullTank === true) {
+                    row.classList.add('full-tank-row');
+                    row.dataset.fullTank = 'true';
+                }
                 row.innerHTML = `
                     <td>${formatDateTime(entry.EntryDate)}</td>
                     <td>${vehicleMap[entry.VehicleId] || 'Unknown'}</td>
@@ -3697,3 +3737,18 @@ document.addEventListener('DOMContentLoaded', initVehicleModal);
         reportEndDate.valueAsDate = today;
     }
 });
+
+const fuelReportInfo = document.getElementById('fuel-report-info');
+const fuelReportLegend = document.getElementById('fuel-report-legend');
+
+if (fuelReportInfo && fuelReportLegend) {
+    fuelReportInfo.addEventListener('click', function (event) {
+        event.stopPropagation();
+
+        fuelReportLegend.classList.toggle('visible');
+    });
+
+    document.addEventListener('click', function () {
+        fuelReportLegend.classList.remove('visible');
+    });
+}
