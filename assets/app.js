@@ -1300,22 +1300,36 @@ document.addEventListener('DOMContentLoaded', function() {
                     const percentageChange =
                         ((lastEfficiency - previousEfficiency) / previousEfficiency) * 100;
 
-                    let trendClass = 'stat-trend neutral';
-                    let trendIcon = 'fas fa-minus';
+                const roundedChange = Number(percentageChange.toFixed(1));
 
-                    if (percentageChange > 0) {
-                        trendClass = 'stat-trend up';
-                        trendIcon = 'fas fa-arrow-up';
-                    } else if (percentageChange < 0) {
-                        trendClass = 'stat-trend down';
-                        trendIcon = 'fas fa-arrow-down';
-                    }
+                let trendClass = 'stat-trend neutral';
+                let trendIcon = 'fas fa-minus';
+
+                if (roundedChange >= 0.1) {
+                    trendClass = 'stat-trend up';
+                    trendIcon = 'fas fa-arrow-up';
 
                     trendElement.className = trendClass;
                     trendElement.innerHTML = `
                         <i class="${trendIcon}"></i>
-                        ${Math.abs(percentageChange).toFixed(1)}%
+                        ${roundedChange.toFixed(1)}%
                     `;
+                } else if (roundedChange <= -0.1) {
+                    trendClass = 'stat-trend down';
+                    trendIcon = 'fas fa-arrow-down';
+
+                    trendElement.className = trendClass;
+                    trendElement.innerHTML = `
+                        <i class="${trendIcon}"></i>
+                        ${Math.abs(roundedChange).toFixed(1)}%
+                    `;
+                } else {
+                    // Less than 0.1% change = neutral
+                    trendElement.className = 'stat-trend neutral';
+                    trendElement.innerHTML = `
+                        <i class="fas fa-minus"></i>
+                    `;
+                }
                 }
             } else {
                 trendElement.className = 'stat-trend';
