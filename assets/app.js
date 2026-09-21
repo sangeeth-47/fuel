@@ -9,7 +9,7 @@ document.addEventListener('DOMContentLoaded', function() {
     let dashboardLoaded = false; // Track if dashboard has been loaded
     
     // API configuration
-    const apiBaseUrl = 'https://api.sangeeth47.in/api';
+    const apiBaseUrl = 'http://localhost:7071/api';
     
     // DOM elements
     const authScreen = document.getElementById('auth-screen');
@@ -1004,13 +1004,35 @@ document.addEventListener('DOMContentLoaded', function() {
                     type: 'line',
                     data: {
                         labels: [],
-                        datasets: [{
-                            label: 'Fuel Consumption (L/100km)',
-                            data: [],
-                            borderColor: 'rgb(75, 192, 192)',
-                            tension: 0.1,
-                            fill: false
-                        }]
+                        datasets: [
+    {
+        label: 'Full Tank',
+        data: fullTankPoints,
+        parsing: false,
+        borderColor: 'rgb(75, 192, 192)',
+        backgroundColor: 'rgb(75, 192, 192)',
+        pointBackgroundColor: 'rgb(75, 192, 192)',
+        pointBorderColor: 'rgb(75, 192, 192)',
+        pointRadius: 5,
+        pointHoverRadius: 7,
+        showLine: true,
+        tension: 0.2,
+        fill: false
+    },
+    {
+        label: 'Partial Fuel',
+        data: partialFuelPoints,
+        parsing: false,
+        borderColor: 'rgb(255, 159, 64)',
+        backgroundColor: 'rgb(255, 159, 64)',
+        pointBackgroundColor: 'rgb(255, 159, 64)',
+        pointBorderColor: 'rgb(255, 159, 64)',
+        pointRadius: 7,
+        pointHoverRadius: 9,
+        pointStyle: 'triangle',
+        showLine: false
+    }
+]
                     },
                     options: {
                         responsive: true,
@@ -1134,11 +1156,12 @@ document.addEventListener('DOMContentLoaded', function() {
                 return;
             }
 
-            // getFuelStats now returns only dashboard data, the latest five
-            // entries and six monthly chart points. It does not return the
-            // complete FuelEntries table.
+            // getFuelStats returns dashboard aggregates, the latest five
+            // entries, and completed full-tank interval points for the
+            // six-month chart. It does not return the complete FuelEntries
+            // table.
             const response = await fetch(
-                `${apiBaseUrl}/getFuelStats?vehicleId=${encodeURIComponent(vehicleId)}`,
+                `http://localhost:7071/api/getFuelStats?vehicleId=${encodeURIComponent(vehicleId)}`,
                 {
                     headers: {
                         'Authorization': `Bearer ${token}`,
@@ -1255,8 +1278,8 @@ document.addEventListener('DOMContentLoaded', function() {
             }
 
             /*
-             * Trend uses the latest two months that actually have an
-             * efficiency value. This is now KM/L directly; no 100/x
+             * Trend uses the latest two completed full-tank intervals
+             * returned by the API. This is KM/L directly; no 100/x
              * conversion is required.
              */
             const trendElement = document.getElementById('consumption-trend');
@@ -1306,24 +1329,48 @@ document.addEventListener('DOMContentLoaded', function() {
             /*
              * Dashboard chart:
              *
-             * chartData contains ONE point per fueling event. This preserves
-             * partial fuelings as separate points.
+             * The new API returns only COMPLETED full-tank intervals.
              *
-             * The x-axis is explicitly pinned to the six calendar months
-             * ending in the current month. Months without fuel entries remain
-             * visible because the axis range is fixed rather than derived
-             * from the data points.
+             * Example:
+             *   FULL -> PARTIAL -> PARTIAL -> FULL
+             *
+             * becomes one chart point at the closing FULL entry.
+             * Partial fills are already included in that interval's
+             * `liters` value by the API, so the browser must NOT create
+             * separate partial-fuel points.
+             *
+             * chartData fields:
+             *   date             = closing full-tank date
+             *   efficiency       = interval KM/L
+             *   distance         = interval distance
+             *   liters           = fuel used in the interval
+             *   cost             = fuel cost in the interval
+             *   partialFillCount = number of partial fills in the interval
+             *   startDate        = opening full-tank date
+             *   endDate          = closing full-tank date
              */
             if (consumptionChart) {
                 consumptionChart.destroy();
+                consumptionChart = null;
             }
 
             const now = new Date();
 
+            /*
+             * Always display exactly six calendar months:
+             * current month + previous five months.
+             *
+             * This range is independent of how many chart points the API
+             * returns, so empty months remain visible.
+             */
             const sixMonthStart = new Date(
                 now.getFullYear(),
                 now.getMonth() - 5,
-                1
+                1,
+                0,
+                0,
+                0,
+                0
             );
 
             const sixMonthEnd = new Date(
@@ -1336,87 +1383,139 @@ document.addEventListener('DOMContentLoaded', function() {
                 999
             );
 
-            const sixMonthEntries = chartData
+            /*
+             * Every API chart point is already a valid full-tank interval.
+             * Do not filter by IsFullTank or create a Partial Fuel dataset.
+             */
+            const intervalPoints = chartData
                 .filter(point => {
-                    const date = new Date(point.date);
-                    return date >= sixMonthStart && date <= sixMonthEnd;
+                    const date = parseApiDateAsEntered(point.date);
+
+                    return (
+                        !Number.isNaN(date.getTime()) &&
+                        date >= sixMonthStart &&
+                        date <= sixMonthEnd &&
+                        point.efficiency != null &&
+                        Number.isFinite(Number(point.efficiency))
+                    );
                 })
-                .sort((a, b) => new Date(a.date) - new Date(b.date));
+                .sort(
+                    (a, b) =>
+                        parseApiDateAsEntered(a.date).getTime() -
+                        parseApiDateAsEntered(b.date).getTime()
+                );
 
-            const chartPoints = sixMonthEntries
-                .filter(point =>
-                    point.efficiency != null &&
-                    Number.isFinite(Number(point.efficiency))
-                )
-                .map(point => ({
-                    x: new Date(point.date).getTime(),
-                    y: Number(point.efficiency),
-                    entry: point
-                }));
+            const chartPoints = intervalPoints.map(point => ({
+                x: parseApiDateAsEntered(point.date).getTime(),
+                y: Number(point.efficiency),
+                entry: point
+            }));
 
-            const ctx = document.getElementById('consumption-chart').getContext('2d');
+            const ctx = document
+                .getElementById('consumption-chart')
+                .getContext('2d');
 
             consumptionChart = new Chart(ctx, {
                 type: 'line',
+
                 data: {
                     datasets: [{
-                        label: 'Fuel Efficiency (KM/L)',
+                        label: 'Fuel Efficiency',
                         data: chartPoints,
                         parsing: false,
+
                         borderColor: 'rgb(75, 192, 192)',
                         backgroundColor: 'rgba(75, 192, 192, 0.1)',
-                        tension: 0.2,
-                        fill: false,
-                        spanGaps: false,
+
+                        pointBackgroundColor: 'rgb(75, 192, 192)',
+                        pointBorderColor: 'rgb(75, 192, 192)',
                         pointRadius: 5,
                         pointHoverRadius: 7,
-                        showLine: true
+
+                        borderWidth: 2,
+                        showLine: true,
+                        tension: 0.2,
+                        fill: false,
+
+                        /*
+                         * Keep the line continuous only between actual
+                         * completed intervals. There are no artificial
+                         * monthly points.
+                         */
+                        spanGaps: false
                     }]
                 },
+
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
+
                     interaction: {
                         mode: 'nearest',
                         intersect: false
                     },
+
                     scales: {
                         x: {
                             type: 'linear',
+
                             min: sixMonthStart.getTime(),
                             max: sixMonthEnd.getTime(),
+
                             display: true,
+
                             title: {
                                 display: true,
                                 text: 'Last 6 Months'
                             },
+
                             ticks: {
+                                autoSkip: false,
+                                maxTicksLimit: 6,
+
                                 callback: function(value) {
-                                    return new Date(value).toLocaleDateString(undefined, {
-                                        month: 'short',
-                                        year: 'numeric'
-                                    });
+                                    return new Date(value).toLocaleDateString(
+                                        undefined,
+                                        {
+                                            month: 'short',
+                                            year: 'numeric'
+                                        }
+                                    );
                                 }
+                            },
+
+                            grid: {
+                                display: true
                             }
                         },
+
                         y: {
                             beginAtZero: false,
+
                             title: {
                                 display: true,
                                 text: 'Kilometers per Liter (KM/L)'
                             },
+
                             ticks: {
                                 callback: value => `${value} KM/L`
                             }
                         }
                     },
+
                     plugins: {
                         title: {
                             display: true,
+
                             text: chartPoints.length > 0
                                 ? 'Fuel Efficiency - Last 6 Months'
-                                : 'No fuel data in the last 6 months'
+                                : 'No completed full-tank intervals in the last 6 months'
                         },
+
+                        legend: {
+                            display: true
+                        },
+
                         tooltip: {
                             callbacks: {
                                 title: function(items) {
@@ -1424,16 +1523,27 @@ document.addEventListener('DOMContentLoaded', function() {
                                         return '';
                                     }
 
-                                    return new Date(items[0].parsed.x)
-                                        .toLocaleDateString(undefined, {
+                                    const point = items[0].raw?.entry;
+                                    const date = point
+                                        ? parseApiDateAsEntered(point.date)
+                                        : new Date(items[0].parsed.x);
+
+                                    return date.toLocaleDateString(
+                                        undefined,
+                                        {
                                             day: '2-digit',
                                             month: 'short',
                                             year: 'numeric'
-                                        });
+                                        }
+                                    );
                                 },
+
                                 label: function(context) {
-                                    return `Efficiency: ${Number(context.parsed.y).toFixed(2)} KM/L`;
+                                    return `Efficiency: ${Number(
+                                        context.parsed.y
+                                    ).toFixed(2)} KM/L`;
                                 },
+
                                 afterLabel: function(context) {
                                     const point = context.raw?.entry;
 
@@ -1441,12 +1551,65 @@ document.addEventListener('DOMContentLoaded', function() {
                                         return [];
                                     }
 
-                                    return [
-                                        `Distance: ${Number(point.distance || 0).toFixed(1)} km`,
-                                        `Fuel: ${Number(point.liters || 0).toFixed(2)} L`,
-                                        `Cost: ${Number(point.cost || 0).toFixed(2)}`,
-                                        `Tank: ${point.isFullTank ? 'Full' : 'Partial'}`
+                                    const lines = [
+                                        `Distance: ${Number(
+                                            point.distance || 0
+                                        ).toFixed(1)} km`,
+
+                                        `Fuel used: ${Number(
+                                            point.liters || 0
+                                        ).toFixed(2)} L`
                                     ];
+
+                                    if (point.cost != null) {
+                                        lines.push(
+                                            `Fuel cost: ${Number(
+                                                point.cost
+                                            ).toFixed(2)}`
+                                        );
+                                    }
+
+                                    if (point.startDate) {
+                                        lines.push(
+                                            `From: ${parseApiDateAsEntered(
+                                                point.startDate
+                                            ).toLocaleDateString(
+                                                undefined,
+                                                {
+                                                    day: '2-digit',
+                                                    month: 'short',
+                                                    year: 'numeric'
+                                                }
+                                            )}`
+                                        );
+                                    }
+
+                                    if (point.endDate) {
+                                        lines.push(
+                                            `To: ${parseApiDateAsEntered(
+                                                point.endDate
+                                            ).toLocaleDateString(
+                                                undefined,
+                                                {
+                                                    day: '2-digit',
+                                                    month: 'short',
+                                                    year: 'numeric'
+                                                }
+                                            )}`
+                                        );
+                                    }
+
+                                    const partialCount = Number(
+                                        point.partialFillCount || 0
+                                    );
+
+                                    if (partialCount > 0) {
+                                        lines.push(
+                                            `Partial fills included: ${partialCount}`
+                                        );
+                                    }
+
+                                    return lines;
                                 }
                             }
                         }
@@ -3104,87 +3267,65 @@ async function handleAddVehicle(e) {
 }
 
 // Helper function to format dates as dd-mm-yyyy hh:mm
-function formatDateTime(dateString) {
-    // Handle the date conversion more carefully to preserve local timezone
-    let date;
-    
-    // If the dateString looks like it's already in ISO format with Z (UTC), 
-    // we need to convert it back to local time interpretation
-    if (typeof dateString === 'string' && dateString.includes('T') && dateString.includes('Z')) {
-        // This is a UTC timestamp, but we want to display it as if it were local time
-        // because the user originally entered it as local time
-        const utcDate = new Date(dateString);
-        // Add back the timezone offset to get back to the original local time
-        const offsetMs = utcDate.getTimezoneOffset() * 60000;
-        date = new Date(utcDate.getTime() + offsetMs);
-    } else if (typeof dateString === 'string' && dateString.includes('T') && !dateString.includes('Z')) {
-        // This might be a local timestamp without timezone info
-        // Treat it as local time
-        date = new Date(dateString);
-    } else {
-        // Fallback for other formats
-        date = new Date(dateString);
+function parseApiDateAsEntered(dateString) {
+    if (!dateString) return null;
+
+    // FuelNFix stores the user's entered IST date/time in the API value.
+    // Even when the serialized value ends with "Z", do not timezone-convert
+    // it. Preserve the exact calendar date/time components returned by the API.
+    if (typeof dateString === 'string') {
+        const match = dateString.match(
+            /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})(?::(\d{2})(?:\.(\d{1,3}))?)?/
+        );
+
+        if (match) {
+            const year = Number(match[1]);
+            const month = Number(match[2]) - 1;
+            const day = Number(match[3]);
+            const hours = Number(match[4]);
+            const minutes = Number(match[5]);
+            const seconds = Number(match[6] || 0);
+            const milliseconds = Number(
+                (match[7] || '').padEnd(3, '0') || 0
+            );
+
+            return new Date(
+                year,
+                month,
+                day,
+                hours,
+                minutes,
+                seconds,
+                milliseconds
+            );
+        }
     }
-    
-    // Ensure we have a valid date
-    if (isNaN(date.getTime())) {
+
+    const fallback = new Date(dateString);
+    return Number.isNaN(fallback.getTime()) ? null : fallback;
+}
+
+function formatDateTime(dateString) {
+    const date = parseApiDateAsEntered(dateString);
+
+    if (!date) {
         console.warn('Invalid date string:', dateString);
         return 'Invalid Date';
     }
-    
-    // Use local time methods to get the components
+
     const day = String(date.getDate()).padStart(2, '0');
     const month = String(date.getMonth() + 1).padStart(2, '0');
     const year = date.getFullYear();
     const hours = String(date.getHours()).padStart(2, '0');
     const minutes = String(date.getMinutes()).padStart(2, '0');
-    
-    // Check if screen is mobile size (this is approximate)
+
     const isMobile = window.innerWidth <= 768;
-    
+
     if (isMobile) {
-        // For mobile: shorter format with line break
-        return `${day}/${month}/${year.toString().substr(-2)}<br><small>${hours}:${minutes}</small>`;
-    } else {
-        // For desktop: full format
         return `${day}-${month}-${year} ${hours}:${minutes}`;
     }
-}
 
-// Helper function to format dates as dd-mm-yyyy (without time)
-function formatDate(dateString) {
-    // Handle the date conversion more carefully to preserve local timezone
-    let date;
-    
-    // If the dateString looks like it's already in ISO format with Z (UTC), 
-    // we need to convert it back to local time interpretation
-    if (typeof dateString === 'string' && dateString.includes('T') && dateString.includes('Z')) {
-        // This is a UTC timestamp, but we want to display it as if it were local time
-        // because the user originally entered it as local time
-        const utcDate = new Date(dateString);
-        // Add back the timezone offset to get back to the original local time
-        const offsetMs = utcDate.getTimezoneOffset() * 60000;
-        date = new Date(utcDate.getTime() + offsetMs);
-    } else if (typeof dateString === 'string' && dateString.includes('T') && !dateString.includes('Z')) {
-        // This might be a local timestamp without timezone info
-        date = new Date(dateString);
-    } else {
-        // Fallback for other formats
-        date = new Date(dateString);
-    }
-    
-    // Ensure we have a valid date
-    if (isNaN(date.getTime())) {
-        console.warn('Invalid date string:', dateString);
-        return 'Invalid Date';
-    }
-    
-    // Use local time methods to get the components
-    const day = String(date.getDate()).padStart(2, '0');
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const year = date.getFullYear();
-    
-    return `${day}-${month}-${year}`;
+    return `${day}-${month}-${year} ${hours}:${minutes}`;
 }
 
 // Helper function to set current date and time
