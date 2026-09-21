@@ -2159,13 +2159,10 @@ table th:last-child {
     display: flex;
 }
 
-.legend-item {
+.legend-item, .legend-description {
     display: flex;
     align-items: center;
     gap: 7px;
-}
-.legend-description {
-    margin-left: 19px;
 }
 
 .legend-color {
@@ -2177,6 +2174,13 @@ table th:last-child {
     background: #e8f5e9;
     border: 1px solid #c8e6c9;
     border-radius: 2px;
+}
+.legend-2 {
+    width: 12px;
+    display: inline-block;
+
+    text-align: center;
+    line-height: 12px;
 }
 
 /* Full-tank report rows */
