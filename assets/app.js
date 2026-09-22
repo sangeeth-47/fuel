@@ -10,7 +10,7 @@ document.addEventListener('DOMContentLoaded', function() {
     let dashboardLoaded = false; // Track if dashboard has been loaded
     
     // API configuration
-    const apiBaseUrl = 'https://api.sangeeth47.in/api';
+    const apiBaseUrl = 'http://localhost:7071/api';
     
     // DOM elements
     const authScreen = document.getElementById('auth-screen');
@@ -389,15 +389,18 @@ document.addEventListener('DOMContentLoaded', function() {
                 addConsumableBtn.addEventListener('click', addConsumableItem);
             }
             
-            // Labor cost and total calculation
-            const laborCostInput = document.getElementById('labor-cost');
-            const totalServiceCostInput = document.getElementById('total-service-cost');
-            
-            if (laborCostInput && totalServiceCostInput) {
-                laborCostInput.addEventListener('input', calculateTotalServiceCost);
-                // Also recalculate when consumables change
-                document.addEventListener('consumablesChanged', calculateTotalServiceCost);
+            // Labor
+            const addLaborBtn = document.getElementById('add-labor-btn');
+
+            if (addLaborBtn) {
+                addLaborBtn.addEventListener('click', addLaborItem);
             }
+
+            // Recalculate service total when consumables change
+            document.addEventListener(
+                'consumablesChanged',
+                calculateTotalServiceCost
+            );
             
             // Reset button for service form
             const serviceResetBtn = serviceForm.querySelector('button[type="reset"]');
@@ -2529,6 +2532,143 @@ if (endDate) {
         // Focus on the item name input
         consumableItem.querySelector(`#${itemId}-name`).focus();
     }
+
+    function addLaborItem() {
+        const laborList = document.getElementById('labor-list');
+
+        if (!laborList) return;
+
+        const noLabor = laborList.querySelector('.no-labor');
+        if (noLabor) {
+            noLabor.remove();
+        }
+
+        const itemId = 'labor-' + Date.now();
+
+        const laborItem = document.createElement('div');
+        laborItem.className = 'labor-item';
+
+        laborItem.innerHTML = `
+            <div class="form-group">
+                <label for="${itemId}-name">Labor Name</label>
+                <input type="text"
+                    id="${itemId}-name"
+                    placeholder="e.g. Engine service, Brake work..."
+                    maxlength="200">
+            </div>
+
+            <div class="form-group">
+                <label for="${itemId}-quantity">Quantity</label>
+                <input type="number"
+                    id="${itemId}-quantity"
+                    step="1"
+                    min="1"
+                    value="1">
+            </div>
+
+            <div class="form-group">
+                <label for="${itemId}-unit-cost">Unit Cost</label>
+                <input type="number"
+                    id="${itemId}-unit-cost"
+                    step="0.01"
+                    min="0"
+                    placeholder="0.00">
+            </div>
+
+            <div class="form-group">
+                <label for="${itemId}-total">Total</label>
+                <input type="number"
+                    id="${itemId}-total"
+                    step="0.01"
+                    min="0"
+                    readonly>
+            </div>
+
+            <button type="button"
+                    class="remove-labor-btn"
+                    title="Remove labor">
+                <i class="fas fa-trash"></i>
+            </button>
+        `;
+
+        laborList.appendChild(laborItem);
+
+        const quantityInput =
+            laborItem.querySelector(`#${itemId}-quantity`);
+
+        const unitCostInput =
+            laborItem.querySelector(`#${itemId}-unit-cost`);
+
+        const totalInput =
+            laborItem.querySelector(`#${itemId}-total`);
+
+        const removeBtn =
+            laborItem.querySelector('.remove-labor-btn');
+
+        [quantityInput, unitCostInput].forEach(input => {
+            input.addEventListener('input', function () {
+                const quantity =
+                    parseFloat(quantityInput.value) || 0;
+
+                const unitCost =
+                    parseFloat(unitCostInput.value) || 0;
+
+                totalInput.value =
+                    (quantity * unitCost).toFixed(2);
+
+                calculateTotalLaborCost();
+            });
+        });
+
+        removeBtn.addEventListener('click', function () {
+            laborItem.remove();
+
+            calculateTotalLaborCost();
+
+            const remaining =
+                laborList.querySelectorAll('.labor-item');
+
+            if (remaining.length === 0) {
+                laborList.innerHTML = `
+                    <div class="no-labor">
+                        <p>No labor added yet. Click "Add Labor" to add labor charges for this service.</p>
+                    </div>
+                `;
+            }
+        });
+
+        laborItem
+            .querySelector(`#${itemId}-name`)
+            .focus();
+    }
+
+
+    function calculateTotalLaborCost() {
+        const laborItems =
+            document.querySelectorAll('.labor-item');
+
+        let totalLaborCost = 0;
+
+        laborItems.forEach(item => {
+            const totalInput =
+                item.querySelector('input[id$="-total"]');
+
+            if (totalInput && totalInput.value) {
+                totalLaborCost +=
+                    parseFloat(totalInput.value) || 0;
+            }
+        });
+
+        const totalLaborCostInput =
+            document.getElementById('total-labor-cost');
+
+        if (totalLaborCostInput) {
+            totalLaborCostInput.value =
+                totalLaborCost.toFixed(2);
+        }
+
+        calculateTotalServiceCost();
+    }
     
     function calculateTotalPartsCost() {
         const consumableItems = document.querySelectorAll('.consumable-item');
@@ -2554,21 +2694,45 @@ if (endDate) {
     }
     
     function calculateTotalServiceCost() {
-        const totalPartsCost = parseFloat(document.getElementById('total-parts-cost').value) || 0;
-        const laborCost = parseFloat(document.getElementById('labor-cost').value) || 0;
-        const totalServiceCostInput = document.getElementById('total-service-cost');
-        
-        // Only auto-calculate if the total service cost is empty or was previously auto-calculated
-        if (totalServiceCostInput && (!totalServiceCostInput.value || totalServiceCostInput.dataset.autoCalculated)) {
-            const totalServiceCost = totalPartsCost + laborCost;
+        const totalPartsCost =
+            parseFloat(
+                document.getElementById('total-parts-cost')?.value
+            ) || 0;
+
+        const totalLaborCost =
+            parseFloat(
+                document.getElementById('total-labor-cost')?.value
+            ) || 0;
+
+        const totalServiceCostInput =
+            document.getElementById('total-service-cost');
+
+        if (
+            totalServiceCostInput &&
+            (
+                !totalServiceCostInput.value ||
+                totalServiceCostInput.dataset.autoCalculated
+            )
+        ) {
+            const totalServiceCost =
+                totalPartsCost + totalLaborCost;
+
             if (totalServiceCost > 0) {
-                totalServiceCostInput.value = totalServiceCost.toFixed(2);
-                totalServiceCostInput.dataset.autoCalculated = 'true';
-                // Add visual feedback
-                totalServiceCostInput.style.backgroundColor = '#e8f5e8';
+                totalServiceCostInput.value =
+                    totalServiceCost.toFixed(2);
+
+                totalServiceCostInput.dataset.autoCalculated =
+                    'true';
+
+                totalServiceCostInput.style.backgroundColor =
+                    '#e8f5e8';
+
                 setTimeout(() => {
                     totalServiceCostInput.style.backgroundColor = '';
                 }, 1000);
+            } else {
+                totalServiceCostInput.value = '';
+                delete totalServiceCostInput.dataset.autoCalculated;
             }
         }
     }
@@ -2587,7 +2751,6 @@ if (endDate) {
         const serviceOilChangeInput = document.getElementById('service-is-oil-change');
         const billNumber = document.getElementById('service-bill-number').value;
         const odometer = parseFloat(document.getElementById('service-odometer').value) || null;
-        const laborCost = parseFloat(document.getElementById('labor-cost').value) || 0;
         const totalServiceCost = parseFloat(document.getElementById('total-service-cost').value);
         const serviceNotes = document.getElementById('service-notes').value;
 
@@ -2623,6 +2786,35 @@ if (endDate) {
             }
         });
 
+            const labors = [];
+
+            const laborItems =
+                document.querySelectorAll('.labor-item');
+
+            laborItems.forEach(item => {
+                const name =
+                    item.querySelector('input[id$="-name"]').value.trim();
+
+                const quantity =
+                    parseInt(
+                        item.querySelector('input[id$="-quantity"]').value,
+                        10
+                    ) || 0;
+
+                const unitCost =
+                    parseFloat(
+                        item.querySelector('input[id$="-unit-cost"]').value
+                    ) || 0;
+
+                if (name && quantity > 0 && unitCost >= 0) {
+                    labors.push({
+                        name,
+                        quantity,
+                        unitCost
+                    });
+                }
+            });
+
         try {
             showLoading();
 
@@ -2641,10 +2833,10 @@ if (endDate) {
                 isOilChange,
                 billNumber,
                 odometer,
-                laborCost,
                 totalServiceCost,
                 serviceNotes,
-                consumables
+                consumables,
+                labors
             };
 
             const response = await fetch(`${apiBaseUrl}/service-addService`, {
@@ -3201,7 +3393,7 @@ if (serviceTypeFilterToggle && serviceTypeFilter) {
                 
                 <div class="service-detail-item">
                     <span class="service-detail-label">Total Cost:</span>
-                    <span class="service-detail-value">${serviceRecord.TotalServiceCost.toFixed(2)}</span>
+                    <span class="service-detail-value total-cost-value">${serviceRecord.TotalServiceCost.toFixed(2)}</span>
                 </div>
                 
                 ${serviceRecord.ServiceNotes ? `
@@ -3222,6 +3414,25 @@ if (serviceTypeFilterToggle && serviceTypeFilter) {
                     `).join('')}
                 </div>
                 ` : ''}
+
+                ${serviceRecord.labors && serviceRecord.labors.length > 0 ? `
+                <div class="service-labors-list">
+                    <h4>Labor Used:</h4>
+
+                    ${serviceRecord.labors.map(labor => `
+                        <div class="service-labor-item">
+                            <span>${labor.LaborName}</span>
+
+                            <span>
+                                ${labor.Quantity} x
+                                ${Number(labor.UnitCost || 0).toFixed(2)}
+                                =
+                                ${Number(labor.TotalCost || 0).toFixed(2)}
+                            </span>
+                        </div>
+                    `).join('')}
+                </div>
+            ` : ''}
             </div>
         `;
         

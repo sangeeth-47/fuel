@@ -2740,6 +2740,95 @@ label:has(input[type="checkbox"]) {
     text-overflow: ellipsis;
 }
 
+/* Labor Section */
+.labor-section {
+    margin-top: 1.5rem;
+}
+
+.labor-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.labor-item {
+    display: grid;
+    grid-template-columns: 2fr 1fr 1fr 1fr auto;
+    gap: 1rem;
+    align-items: end;
+    padding: 1rem;
+    background: var(--light-gray-color, #f8f8f8);
+    border-radius: 8px;
+    border: 1px solid #e5e5e5;
+}
+
+.labor-item .form-group {
+    margin-bottom: 0;
+}
+
+.labor-item input {
+    width: 100%;
+}
+
+.remove-labor-btn {
+    width: 40px;
+    height: 40px;
+    border: none;
+    border-radius: 6px;
+    background: #dc3545;
+    color: white;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.remove-labor-btn:hover {
+    opacity: 0.85;
+}
+
+.no-labor {
+    text-align: center;
+    padding: 1rem;
+    color: var(--gray-color);
+    border: 1px dashed #ccc;
+    border-radius: 8px;
+}
+
+.total-labor-cost {
+    margin-top: 1rem;
+}
+
+.total-labor-cost input {
+    font-weight: 600;
+}
+
+.service-labor-item {
+    display: flex;
+    justify-content: space-between;
+    padding: 0.25rem 0;
+    font-size: 0.9rem !important;
+    font-weight: 400 !important;
+    font-family: inherit !important;
+    line-height: inherit;
+}
+
+.service-labor-item span {
+    font-size: 0.9rem !important;
+    font-weight: 400 !important;
+    font-family: inherit !important;
+}
+
+.service-labor-item:last-child {
+    border-bottom: none;
+}
+
+.service-labor-item span:last-child {
+    white-space: nowrap;
+    font-size: 0.9rem !important;
+    font-weight: 400 !important;
+}
+
 @media (max-width: 768px) {
     .service-type-header-cell {
         justify-content: flex-start;
@@ -2767,6 +2856,46 @@ label:has(input[type="checkbox"]) {
         max-width: 100px;
         font-size: 0.8rem;
     }
+
+    .labor-item {
+        grid-template-columns: 1fr 1fr;
+    }
+
+    .labor-item .form-group:first-child {
+        grid-column: 1 / -1;
+    }
+
+    .remove-labor-btn {
+        width: 100%;
+    }
+}
+
+.service-labors-list {
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid #e5e5e5;
+}
+
+.service-labors-list h4 {
+    margin-bottom: 0.75rem;
+}
+
+.service-labor-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+    padding: 0.65rem 0;
+    border-bottom: 1px solid #eee;
+}
+
+.service-labor-item:last-child {
+    border-bottom: none;
+}
+
+.service-labor-item span:last-child {
+    white-space: nowrap;
+    font-weight: 500;
 }
 
 .btn-view-service,
@@ -2866,6 +2995,10 @@ label:has(input[type="checkbox"]) {
 
 .service-detail-value {
     color: var(--gray-color);
+}
+
+.total-cost-value {
+    font-weight: 700;
 }
 
 .service-consumables-list {

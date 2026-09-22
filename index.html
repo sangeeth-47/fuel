@@ -351,16 +351,42 @@
                             </div>
                         </div>
                         
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label for="labor-cost">Labor Cost</label>
-                                <input type="number" id="labor-cost" step="0.01" min="0">
+                        <!-- Labor Section -->
+                        <div class="labor-section">
+                            <div class="section-header">
+                                <h3>Labor</h3>
                             </div>
-                            
-                            <div class="form-group">
-                                <label for="total-service-cost">Total Service Cost *</label>
-                                <input type="number" id="total-service-cost" step="0.01" min="0" required>
+
+                            <div id="labor-list" class="labor-list">
+                                <div class="no-labor">
+                                    <p>No labor added yet. Click "Add Labor" to add labor charges for this service.</p>
+                                </div>
                             </div>
+
+                            <button type="button"
+                                    id="add-labor-btn"
+                                    class="btn-secondary"
+                                    style="margin-top: 1rem; width: 100%;">
+                                <i class="fas fa-plus"></i> Add Labor
+                            </button>
+
+                            <div class="form-group total-labor-cost">
+                                <label for="total-labor-cost">Total Labor Cost</label>
+                                <input type="number"
+                                    id="total-labor-cost"
+                                    step="0.01"
+                                    min="0"
+                                    readonly>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="total-service-cost">Total Service Cost *</label>
+                            <input type="number"
+                                id="total-service-cost"
+                                step="0.01"
+                                min="0"
+                                required>
                         </div>
                         
                         <div class="form-group">
