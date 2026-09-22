@@ -3343,18 +3343,40 @@ function formatDateTime(dateString) {
     }
 
     const day = String(date.getDate()).padStart(2, '0');
-    const month = String(date.getMonth() + 1).padStart(2, '0');
+
+    const months = [
+        'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+        'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+    ];
+
+    const month = months[date.getMonth()];
     const year = date.getFullYear();
+
     const hours = String(date.getHours()).padStart(2, '0');
     const minutes = String(date.getMinutes()).padStart(2, '0');
 
-    const isMobile = window.innerWidth <= 768;
+    return `${day}-${month}-${year} ${hours}:${minutes}`;
+}
 
-    if (isMobile) {
-        return `${day}-${month}-${year} ${hours}:${minutes}`;
+function formatDate(dateString) {
+    const date = parseApiDateAsEntered(dateString);
+
+    if (!date) {
+        console.warn('Invalid date string:', dateString);
+        return 'Invalid Date';
     }
 
-    return `${day}-${month}-${year} ${hours}:${minutes}`;
+    const day = String(date.getDate()).padStart(2, '0');
+
+    const months = [
+        'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+        'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+    ];
+
+    const month = months[date.getMonth()];
+    const year = date.getFullYear();
+
+    return `${day}-${month}-${year}`;
 }
 
 // Helper function to set current date and time
