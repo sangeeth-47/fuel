@@ -2751,10 +2751,9 @@ if (endDate) {
         const serviceOilChangeInput = document.getElementById('service-is-oil-change');
         const billNumber = document.getElementById('service-bill-number').value;
         const odometer = parseFloat(document.getElementById('service-odometer').value) || null;
-        const totalServiceCost = parseFloat(document.getElementById('total-service-cost').value);
         const serviceNotes = document.getElementById('service-notes').value;
 
-        if (!vehicleId || !serviceDate || !selectedServiceType || isNaN(totalServiceCost) || totalServiceCost <= 0) {
+        if (!vehicleId || !serviceDate || !selectedServiceType) {
             showToast('Please fill in all required fields', 'error');
             return;
         }
@@ -2833,7 +2832,6 @@ if (endDate) {
                 isOilChange,
                 billNumber,
                 odometer,
-                totalServiceCost,
                 serviceNotes,
                 consumables,
                 labors
