@@ -3196,9 +3196,8 @@ if (serviceTypeFilterToggle && serviceTypeFilter) {
         filteredRecords.forEach(record => {
             const row = document.createElement('tr');
             
-            // Calculate parts total from consumables
-            const partsTotal = record.consumables ? 
-                record.consumables.reduce((sum, item) => sum + (item.TotalPrice || 0), 0) : 0;
+            // Use the aggregated parts total from the list response.
+            const partsTotal = Number(record.PartsCost || 0);
             
             row.innerHTML = `
                 <td>${formatDate(record.ServiceDate)}</td>
@@ -3207,8 +3206,8 @@ if (serviceTypeFilterToggle && serviceTypeFilter) {
                 <td>${record.BillNumber || '--'}</td>
                 <td>${record.Odometer ? record.Odometer.toFixed(1) : '--'}</td>
                 <td>${partsTotal.toFixed(2)}</td>
-                <td>${record.LaborCost ? record.LaborCost.toFixed(2) : '0.00'}</td>
-                <td>${record.TotalServiceCost.toFixed(2)}</td>
+                <td>${Number(record.LaborCost || 0).toFixed(2)}</td>
+                <td>${Number(record.TotalServiceCost || 0).toFixed(2)}</td>
                 <td>
                     <button class="btn-view-service" onclick="viewServiceDetails('${record.ServiceId}')" title="View Details">
                         <i class="fas fa-eye"></i>
@@ -3300,8 +3299,10 @@ if (serviceTypeFilterToggle && serviceTypeFilter) {
                 return;
             }
 
-            //  No userId in query
-            const response = await fetch(`${apiBaseUrl}/service-getServices`, {
+            const params = new URLSearchParams();
+            params.append('serviceId', serviceId);
+
+            const response = await fetch(`${apiBaseUrl}/service-getServices?${params.toString()}`, {
                 headers: {
                     'Authorization': `Bearer ${token}`
                 }
@@ -3322,7 +3323,7 @@ if (serviceTypeFilterToggle && serviceTypeFilter) {
             }
 
             const data = await response.json();
-            const serviceRecord = (data.services || []).find(
+            const serviceRecord = data.service || (data.services || []).find(
                 item => item.ServiceId === serviceId
             );
 
@@ -3383,17 +3384,17 @@ if (serviceTypeFilterToggle && serviceTypeFilter) {
                 
                 <div class="service-detail-item">
                     <span class="service-detail-label">Labor Cost:</span>
-                    <span class="service-detail-value">${serviceRecord.LaborCost ? serviceRecord.LaborCost.toFixed(2) : '0.00'}</span>
+                    <span class="service-detail-value">${Number(serviceRecord.LaborCost || 0).toFixed(2)}</span>
                 </div>
                 
                 <div class="service-detail-item">
                     <span class="service-detail-label">Parts Cost:</span>
-                    <span class="service-detail-value">${serviceRecord.consumables ? serviceRecord.consumables.reduce((sum, item) => sum + (item.TotalPrice || 0), 0).toFixed(2) : '0.00'}</span>
+                    <span class="service-detail-value">${serviceRecord.consumables ? Number(serviceRecord.consumables.reduce((sum, item) => sum + (Number(item.TotalPrice) || 0), 0)).toFixed(2) : Number(serviceRecord.PartsCost || 0).toFixed(2)}</span>
                 </div>
                 
                 <div class="service-detail-item">
                     <span class="service-detail-label">Total Cost:</span>
-                    <span class="service-detail-value total-cost-value">${serviceRecord.TotalServiceCost.toFixed(2)}</span>
+                    <span class="service-detail-value total-cost-value">${Number(serviceRecord.TotalServiceCost || 0).toFixed(2)}</span>
                 </div>
                 
                 ${serviceRecord.ServiceNotes ? `
@@ -3409,7 +3410,7 @@ if (serviceTypeFilterToggle && serviceTypeFilter) {
                     ${serviceRecord.consumables.map(item => `
                         <div class="service-consumable-item">
                             <span>${item.ConsumableName}</span>
-                            <span>${item.Quantity} x ${item.UnitPrice.toFixed(2)} = ${item.TotalPrice.toFixed(2)}</span>
+                            <span>${item.Quantity} x ${Number(item.UnitPrice || 0).toFixed(2)} = ${Number(item.TotalPrice || 0).toFixed(2)}</span>
                         </div>
                     `).join('')}
                 </div>
