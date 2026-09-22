@@ -673,6 +673,105 @@ body {
     font-weight: 500;
 }
 
+.service-type-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    margin-bottom: 0.5rem;
+}
+
+.service-type-header label {
+    margin-bottom: 0;
+}
+
+.service-oil-change-inline {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    flex-shrink: 0;
+}
+
+.service-oil-change-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    margin-bottom: 0;
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: var(--primary-color);
+    cursor: help;
+    user-select: none;
+}
+
+.service-oil-change-toggle input[type="checkbox"] {
+    margin: 0;
+}
+
+.service-oil-change-help {
+    width: 16px;
+    height: 16px;
+    border: 0;
+    padding: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    background: rgba(66, 133, 244, 0.12);
+    color: var(--primary-color);
+    font-size: 0.7rem;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.service-oil-change-tooltip {
+    position: absolute;
+    top: calc(100% + 0.5rem);
+    right: 0;
+    max-width: min(260px, 70vw);
+    padding: 0.6rem 0.75rem;
+    border-radius: 0.5rem;
+    background: #1f2937;
+    color: #fff;
+    font-size: 0.78rem;
+    line-height: 1.35;
+    box-shadow: 0 10px 24px rgba(0, 0, 0, 0.18);
+    z-index: 20;
+}
+
+.service-oil-change-tooltip::before {
+    content: '';
+    position: absolute;
+    top: -5px;
+    right: 0.7rem;
+    width: 10px;
+    height: 10px;
+    background: #1f2937;
+    transform: rotate(45deg);
+}
+
+@media (max-width: 576px) {
+    .service-type-header {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+
+    .service-oil-change-inline {
+        align-self: flex-end;
+    }
+
+    .service-oil-change-tooltip {
+        right: auto;
+        left: 0;
+    }
+
+    .service-oil-change-tooltip::before {
+        right: auto;
+        left: 0.7rem;
+    }
+}
+
 .form-group input {
     width: 100%;
     padding: 0.75rem;

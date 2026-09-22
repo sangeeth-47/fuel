@@ -294,6 +294,77 @@ document.addEventListener('DOMContentLoaded', function() {
         const serviceForm = document.getElementById('service-form');
         if (serviceForm) {
             serviceForm.addEventListener('submit', handleServiceSubmit);
+
+            const serviceTypeInput = document.getElementById('service-type');
+            const serviceOilChangeGroup = document.getElementById('service-oil-change-group');
+            const serviceOilChangeInput = document.getElementById('service-is-oil-change');
+            const serviceOilChangeHelp = document.getElementById('service-oil-change-help');
+            const serviceOilChangeTooltip = document.getElementById('service-oil-change-help-tooltip');
+
+            const closeServiceOilChangeTooltip = function() {
+                if (!serviceOilChangeHelp || !serviceOilChangeTooltip) {
+                    return;
+                }
+
+                serviceOilChangeTooltip.classList.add('hidden');
+                serviceOilChangeHelp.setAttribute('aria-expanded', 'false');
+            };
+
+            const toggleServiceOilChangeTooltip = function() {
+                if (!serviceOilChangeHelp || !serviceOilChangeTooltip) {
+                    return;
+                }
+
+                const isHidden = serviceOilChangeTooltip.classList.contains('hidden');
+
+                if (isHidden) {
+                    serviceOilChangeTooltip.classList.remove('hidden');
+                    serviceOilChangeHelp.setAttribute('aria-expanded', 'true');
+                } else {
+                    closeServiceOilChangeTooltip();
+                }
+            };
+
+            const updateServiceOilChangeState = function() {
+                if (!serviceTypeInput || !serviceOilChangeGroup || !serviceOilChangeInput) {
+                    return;
+                }
+
+                const selectedServiceType = serviceTypeInput.value;
+                const isOilChangeService = selectedServiceType === 'Oil Change';
+                const showOilChangeToggle = Boolean(selectedServiceType) && !isOilChangeService;
+
+                serviceOilChangeGroup.classList.toggle('hidden', !showOilChangeToggle);
+                serviceOilChangeInput.checked = isOilChangeService;
+                closeServiceOilChangeTooltip();
+            };
+
+            if (serviceTypeInput) {
+                serviceTypeInput.addEventListener('change', updateServiceOilChangeState);
+                updateServiceOilChangeState();
+            }
+
+            if (serviceOilChangeHelp && serviceOilChangeTooltip) {
+                serviceOilChangeHelp.addEventListener('click', function(event) {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    toggleServiceOilChangeTooltip();
+                });
+
+                document.addEventListener('click', function(event) {
+                    if (!serviceOilChangeTooltip.classList.contains('hidden') &&
+                        !serviceOilChangeHelp.contains(event.target) &&
+                        !serviceOilChangeTooltip.contains(event.target)) {
+                        closeServiceOilChangeTooltip();
+                    }
+                });
+
+                document.addEventListener('keydown', function(event) {
+                    if (event.key === 'Escape') {
+                        closeServiceOilChangeTooltip();
+                    }
+                });
+            }
             
             // Set current date for service
             const serviceDateInput = document.getElementById('service-date');
@@ -2497,6 +2568,7 @@ if (endDate) {
         const vehicleId = document.getElementById('service-vehicle').value;
         const serviceDate = document.getElementById('service-date').value;
         const serviceType = document.getElementById('service-type').value;
+        const serviceOilChangeInput = document.getElementById('service-is-oil-change');
         const billNumber = document.getElementById('service-bill-number').value;
         const odometer = parseFloat(document.getElementById('service-odometer').value) || null;
         const laborCost = parseFloat(document.getElementById('labor-cost').value) || 0;
@@ -2508,10 +2580,13 @@ if (endDate) {
             return;
         }
 
-        const consumables = [];
-        const consumableItems = document.querySelectorAll('.consumable-item');
+            const consumables = [];
+            const consumableItems = document.querySelectorAll('.consumable-item');
+            const isOilChange = serviceType === 'Oil Change'
+                ? true
+                : Boolean(serviceOilChangeInput && serviceOilChangeInput.checked);
 
-        consumableItems.forEach(item => {
+            consumableItems.forEach(item => {
             const name = item.querySelector('input[id$="-name"]').value;
             const quantity = parseFloat(item.querySelector('input[id$="-quantity"]').value) || 0;
             const unitPrice = parseFloat(item.querySelector('input[id$="-unit-price"]').value) || 0;
@@ -2542,6 +2617,7 @@ if (endDate) {
                 vehicleId,
                 serviceDate,
                 serviceType,
+                isOilChange,
                 billNumber,
                 odometer,
                 laborCost,
