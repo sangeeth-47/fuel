@@ -2639,6 +2639,40 @@ label:has(input[type="checkbox"]) {
     border-bottom: 1px solid var(--border-color);
 }
 
+.service-type-filter-menu {
+    display: none;
+    position: fixed;
+    width: 170px;
+    min-width: 170px;
+    max-height: 250px;
+    z-index: 99999;
+    overflow-y: auto;
+    flex-direction: column;
+    background: var(--card-background, #fff);
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    padding: 4px 0;
+}
+
+.service-type-filter-option {
+    display: block;
+    width: 100%;
+    padding: 9px 12px;
+    border: 0;
+    background: transparent;
+    text-align: left;
+    font-size: 14px;
+    color: var(--dark-color);
+    cursor: pointer;
+}
+
+.service-type-filter-option:hover,
+.service-type-filter-option:focus {
+    background: var(--light-color);
+    outline: none;
+}
+
 #service-history-table th {
     background-color: var(--light-color);
     font-weight: 600;
@@ -2658,6 +2692,44 @@ label:has(input[type="checkbox"]) {
     vertical-align: middle;
 }
 
+.service-type-header-cell {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    white-space: nowrap;
+}
+
+.service-type-header-cell span {
+    display: inline;
+    white-space: nowrap;
+}
+
+.small-table-filter-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: auto;
+    height: auto;
+    padding: 0;
+    margin: 0;
+    border: none;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+    color: inherit;
+    cursor: pointer;
+    line-height: 1;
+}
+
+.small-table-filter-btn:hover,
+.small-table-filter-btn:focus,
+.small-table-filter-btn:active {
+    background: transparent;
+    border: none;
+    box-shadow: none;
+    outline: none;
+}
+
 /* Service history table responsive styling for bill number column */
 #service-history-table th:nth-child(4), 
 #service-history-table td:nth-child(4) {
@@ -2669,6 +2741,25 @@ label:has(input[type="checkbox"]) {
 }
 
 @media (max-width: 768px) {
+    .service-type-header-cell {
+        justify-content: flex-start;
+        gap: 0.25rem;
+        width: auto;
+    }
+
+    .service-type-header-cell span {
+        display: inline;
+        font-size: 0.8rem;
+        white-space: nowrap;
+    }
+
+    .small-table-filter-btn {
+        width: auto;
+        height: auto;
+        font-size: 0.7rem;
+        margin-left: 0;
+    }
+
     /* Hide bill number column on very small screens if needed */
     #service-history-table th:nth-child(4), 
     #service-history-table td:nth-child(4) {

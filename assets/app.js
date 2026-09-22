@@ -3,6 +3,7 @@ document.addEventListener('DOMContentLoaded', function() {
     let currentUser = null;
     let authToken = null;
     let userVehicles = [];
+    let currentServiceHistoryRecords = [];
     let consumptionChart = null;
     let reportConsumptionChart = null;
     let reportCostChart = null;
@@ -300,6 +301,8 @@ document.addEventListener('DOMContentLoaded', function() {
             const serviceOilChangeInput = document.getElementById('service-is-oil-change');
             const serviceOilChangeHelp = document.getElementById('service-oil-change-help');
             const serviceOilChangeTooltip = document.getElementById('service-oil-change-help-tooltip');
+            const customServiceTypeGroup = document.getElementById('custom-service-type-group');
+            const customServiceTypeInput = document.getElementById('custom-service-type');
 
             const closeServiceOilChangeTooltip = function() {
                 if (!serviceOilChangeHelp || !serviceOilChangeTooltip) {
@@ -325,7 +328,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             };
 
-            const updateServiceOilChangeState = function() {
+            const updateServiceTypeUI = function() {
                 if (!serviceTypeInput || !serviceOilChangeGroup || !serviceOilChangeInput) {
                     return;
                 }
@@ -337,11 +340,19 @@ document.addEventListener('DOMContentLoaded', function() {
                 serviceOilChangeGroup.classList.toggle('hidden', !showOilChangeToggle);
                 serviceOilChangeInput.checked = isOilChangeService;
                 closeServiceOilChangeTooltip();
+
+                if (customServiceTypeGroup && customServiceTypeInput) {
+                    const isOtherService = selectedServiceType === 'Other';
+                    customServiceTypeGroup.classList.toggle('hidden', !isOtherService);
+                    if (!isOtherService) {
+                        customServiceTypeInput.value = '';
+                    }
+                }
             };
 
             if (serviceTypeInput) {
-                serviceTypeInput.addEventListener('change', updateServiceOilChangeState);
-                updateServiceOilChangeState();
+                serviceTypeInput.addEventListener('change', updateServiceTypeUI);
+                updateServiceTypeUI();
             }
 
             if (serviceOilChangeHelp && serviceOilChangeTooltip) {
@@ -2567,7 +2578,12 @@ if (endDate) {
         
         const vehicleId = document.getElementById('service-vehicle').value;
         const serviceDate = document.getElementById('service-date').value;
-        const serviceType = document.getElementById('service-type').value;
+        const selectedServiceType = document.getElementById('service-type').value;
+        const customServiceTypeInput = document.getElementById('custom-service-type');
+        const customServiceText = customServiceTypeInput ? customServiceTypeInput.value.trim() : '';
+        const serviceType = selectedServiceType === 'Other'
+            ? (customServiceText || 'Other')
+            : selectedServiceType;
         const serviceOilChangeInput = document.getElementById('service-is-oil-change');
         const billNumber = document.getElementById('service-bill-number').value;
         const odometer = parseFloat(document.getElementById('service-odometer').value) || null;
@@ -2575,8 +2591,13 @@ if (endDate) {
         const totalServiceCost = parseFloat(document.getElementById('total-service-cost').value);
         const serviceNotes = document.getElementById('service-notes').value;
 
-        if (!vehicleId || !serviceDate || !serviceType || isNaN(totalServiceCost) || totalServiceCost <= 0) {
+        if (!vehicleId || !serviceDate || !selectedServiceType || isNaN(totalServiceCost) || totalServiceCost <= 0) {
             showToast('Please fill in all required fields', 'error');
+            return;
+        }
+
+        if (selectedServiceType === 'Other' && customServiceText.length > 50) {
+            showToast('Custom service type must be 50 characters or fewer.', 'error');
             return;
         }
 
@@ -2780,6 +2801,7 @@ if (endDate) {
             const data = await response.json();
 
             const serviceRecords = data?.services || [];
+            currentServiceHistoryRecords = serviceRecords;
 
             // FIX: Ensure summary always exists
             const summary = {
@@ -2843,17 +2865,133 @@ if (endDate) {
     
     function updateServiceHistoryTable(serviceRecords) {
         const tbody = document.querySelector('#service-history-table tbody');
+        const serviceTypeFilter = document.getElementById('service-type-filter');
+        const serviceTypeFilterToggle = document.getElementById('service-type-filter-toggle');
         tbody.innerHTML = '';
-        
-        if (serviceRecords.length === 0) {
+
+        if (serviceTypeFilter) {
+    const uniqueServiceTypes = [...new Set(serviceRecords
+        .map(record => record.ServiceType)
+        .filter(Boolean))]
+        .sort((a, b) => a.localeCompare(b));
+
+    const selectedValue = serviceTypeFilter.dataset.selectedValue || '';
+
+    serviceTypeFilter.innerHTML = '';
+
+    const filterOptions = ['All', ...uniqueServiceTypes];
+
+    filterOptions.forEach(type => {
+        const option = document.createElement('button');
+
+        option.type = 'button';
+        option.className = 'service-type-filter-option';
+        option.textContent = type;
+
+        const value = type === 'All' ? '' : type;
+
+        option.addEventListener('click', function(event) {
+            event.preventDefault();
+            event.stopPropagation();
+
+            serviceTypeFilter.dataset.selectedValue = value;
+
+            // Hide the filter list immediately after selection
+            serviceTypeFilter.style.display = 'none';
+
+            updateServiceHistoryTable(currentServiceHistoryRecords);
+        });
+
+        serviceTypeFilter.appendChild(option);
+    });
+
+if (serviceTypeFilterToggle && serviceTypeFilter) {
+
+    serviceTypeFilterToggle.onclick = function (event) {
+        event.preventDefault();
+        event.stopPropagation();
+
+        const isOpen = serviceTypeFilter.style.display === 'flex';
+
+        if (isOpen) {
+            serviceTypeFilter.style.display = 'none';
+            return;
+        }
+
+        // Move dropdown outside the table.
+        if (serviceTypeFilter.parentElement !== document.body) {
+            document.body.appendChild(serviceTypeFilter);
+        }
+
+        const rect = serviceTypeFilterToggle.getBoundingClientRect();
+
+        const menuWidth = 170;
+        const gap = 6;
+
+        serviceTypeFilter.style.position = 'fixed';
+        serviceTypeFilter.style.display = 'flex';
+        serviceTypeFilter.style.width = `${menuWidth}px`;
+        serviceTypeFilter.style.zIndex = '99999';
+
+        /*
+         * Keep the dropdown beside the filter icon.
+         * Normally it opens to the right of the icon.
+         */
+        let left = rect.right + gap;
+        let top = rect.top;
+
+        /*
+         * If there isn't enough room on the right,
+         * open it to the left of the icon.
+         */
+        if (left + menuWidth > window.innerWidth - 8) {
+            left = rect.left - menuWidth - gap;
+        }
+
+        /*
+         * Keep it inside the screen vertically.
+         */
+        const menuHeight = serviceTypeFilter.offsetHeight;
+
+        if (top + menuHeight > window.innerHeight - 8) {
+            top = window.innerHeight - menuHeight - 8;
+        }
+
+        if (top < 8) {
+            top = 8;
+        }
+
+        serviceTypeFilter.style.left = `${left}px`;
+        serviceTypeFilter.style.top = `${top}px`;
+    };
+
+    // Close when clicking anywhere outside the button or dropdown.
+    document.addEventListener('click', function (event) {
+
+        if (
+            !serviceTypeFilterToggle.contains(event.target) &&
+            !serviceTypeFilter.contains(event.target)
+        ) {
+            serviceTypeFilter.style.display = 'none';
+        }
+    });
+}
+}
+
+        const selectedServiceType = serviceTypeFilter ? (serviceTypeFilter.dataset.selectedValue || '') : '';
+        const filteredRecords = selectedServiceType
+            ? serviceRecords.filter(record => record.ServiceType === selectedServiceType)
+            : serviceRecords;
+
+        if (filteredRecords.length === 0) {
             const row = document.createElement('tr');
-            row.innerHTML = '<td colspan="9">No service records found. Add your first service record to get started.</td>';
+            row.innerHTML = '<td colspan="9">No service records found for the selected service type.</td>';
             tbody.appendChild(row);
             return;
         }
         
         // Sort by date (newest first)
-        serviceRecords.sort((a, b) => {
+        filteredRecords.sort((a, b) => {
             const dateA = new Date(a.ServiceDate);
             const dateB = new Date(b.ServiceDate);
             return dateB - dateA;
@@ -2863,7 +3001,7 @@ if (endDate) {
         const vehicleMap = {};
         userVehicles.forEach(v => vehicleMap[v.VehicleId] = `${v.Make} ${v.Model}`);
         
-        serviceRecords.forEach(record => {
+        filteredRecords.forEach(record => {
             const row = document.createElement('tr');
             
             // Calculate parts total from consumables

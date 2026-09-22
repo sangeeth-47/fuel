@@ -299,6 +299,8 @@
                                 <select id="service-type" required>
                                     <option value="">Select service type</option>
                                     <option value="Regular Maintenance">Regular Maintenance</option>
+                                    <option value="Insurance Renewal">Insurance Renewal</option>
+                                    <option value="Pollution Test">Pollution Test</option>
                                     <option value="Oil Change">Oil Change</option>
                                     <option value="Tire Service">Tire Service</option>
                                     <option value="Brake Service">Brake Service</option>
@@ -308,6 +310,12 @@
                                     <option value="Battery Service">Battery Service</option>
                                     <option value="Other">Other</option>
                                 </select>
+                            </div>
+
+                            <div class="form-group custom-service-type-group hidden" id="custom-service-type-group">
+                                <label for="custom-service-type">Custom Service Type</label>
+                                <input type="text" id="custom-service-type" maxlength="30" placeholder="Enter the custom service type (optional)">
+                                <small class="form-help">Optional: max 30 characters. If left blank, it will save as "Other".</small>
                             </div>
                             
                             <div class="form-group">
@@ -420,7 +428,21 @@
                                     <tr>
                                         <th>Date</th>
                                         <th>Vehicle</th>
-                                        <th>Service Type</th>
+                                        <th>
+                                            <div class="service-type-header-cell">
+                                                <span>Service Type</span>
+                                                <button
+                                                    type="button"
+                                                    id="service-type-filter-toggle"
+                                                    class="small-table-filter-btn"
+                                                    title="Filter by service type"
+                                                    aria-label="Filter by service type">
+                                                    <i class="fas fa-filter"></i>
+                                                </button>
+                                            </div>
+
+                                            <div id="service-type-filter" class="service-type-filter-menu"></div>
+                                        </th>
                                         <th>Bill Number</th>
                                         <th>Odometer</th>
                                         <th>Parts Cost</th>
