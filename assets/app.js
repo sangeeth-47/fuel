@@ -1733,7 +1733,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 document.getElementById('total-distance').textContent =
                     Number(evStats.totalDistance || 0).toFixed(1);
                 document.getElementById('total-fuel').textContent =
-                    Number(evStats.totalEnergy || 0).toFixed(1);
+                    Number(evStats.totalEnergy || 0).toFixed(2);
                 document.getElementById('total-cost').textContent =
                     Number(evStats.totalCost || 0).toFixed(2);
                 const costPerKmElement = document.getElementById('cost-per-km');
@@ -1889,7 +1889,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     Number(stats.totalDistance || 0).toFixed(1);
 
                 document.getElementById('total-fuel').textContent =
-                    Number(stats.totalLiters || 0).toFixed(1);
+                    Number(stats.totalLiters || 0).toFixed(2);
 
                 document.getElementById('total-cost').textContent =
                     Number(stats.totalCost || 0).toFixed(2);
