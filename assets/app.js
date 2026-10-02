@@ -5151,6 +5151,10 @@ function setCurrentDateTime() {
     if (entryDateInput) {
         entryDateInput.value = currentDateTime;
     }
+    const chargingEndTimeInput = document.getElementById('entry-charging-end-time');
+    if (chargingEndTimeInput) {
+        chargingEndTimeInput.value = currentDateTime;
+    }
 }
 
 // // Add a token validation test function
