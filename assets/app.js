@@ -10,7 +10,7 @@ document.addEventListener('DOMContentLoaded', function() {
     let dashboardLoaded = false; // Track if dashboard has been loaded
     
     // API configuration
-    const apiBaseUrl = 'https://api.sangeeth47.in/api';
+    const apiBaseUrl = 'http://localhost:7071/api';
     
     // DOM elements
     const authScreen = document.getElementById('auth-screen');
@@ -26,6 +26,183 @@ document.addEventListener('DOMContentLoaded', function() {
     const contentTabs = document.querySelectorAll('.content-tab');
     const loadingOverlay = document.getElementById('loading-overlay');
     const toastContainer = document.getElementById('toast-container');
+    let currentReportMode = 'fuel';
+
+    function getVehicleById(vehicleId) {
+        return userVehicles.find(vehicle => String(vehicle.VehicleId) === String(vehicleId));
+    }
+
+    function isElectricVehicle(vehicleOrId) {
+        const vehicle = typeof vehicleOrId === 'object' && vehicleOrId !== null
+            ? vehicleOrId
+            : getVehicleById(vehicleOrId);
+
+        return String(vehicle?.FuelType || '').toLowerCase() === 'electric';
+    }
+
+    function hasElectricVehicles() {
+        return userVehicles.some(vehicle => isElectricVehicle(vehicle));
+    }
+
+    function formatDurationFromMinutes(totalMinutes) {
+        if (totalMinutes === null || totalMinutes === undefined || Number.isNaN(Number(totalMinutes))) {
+            return '--';
+        }
+
+        const minutes = Math.max(0, Math.round(Number(totalMinutes)));
+        const hours = Math.floor(minutes / 60);
+        const remainingMinutes = minutes % 60;
+
+        if (hours === 0) {
+            return `${remainingMinutes} min`;
+        }
+
+        return `${hours}h ${String(remainingMinutes).padStart(2, '0')}m`;
+    }
+
+    function setDashboardMode(isElectric) {
+        const avgLabel = document.getElementById('avg-efficiency-label');
+        const energyLabel = document.getElementById('total-energy-label');
+        const costLabel = document.getElementById('total-cost-label');
+        const costPerKmCard = document.getElementById('cost-per-km-card');
+        const costPerKmLabel = document.getElementById('cost-per-km-label');
+        const lastLabel = document.getElementById('last-stat-label');
+
+        if (avgLabel) {
+            avgLabel.textContent = isElectric ? 'EV Efficiency (km/kWh)' : 'Avg Efficiency (KM/L)';
+        }
+
+        if (energyLabel) {
+            energyLabel.textContent = isElectric ? 'Energy Used (kWh)' : 'Total Fuel (L)';
+        }
+
+        if (costLabel) {
+            costLabel.textContent = isElectric ? 'Energy Cost' : 'Total Cost';
+        }
+
+        if (costPerKmCard) {
+            costPerKmCard.classList.toggle('hidden', !isElectric);
+        }
+
+        if (costPerKmLabel) {
+            costPerKmLabel.textContent = 'Cost / km';
+        }
+
+        if (lastLabel) {
+            lastLabel.textContent = isElectric ? 'Total Charge Time' : 'Last Oil Change';
+        }
+    }
+
+    function setReportMode(mode) {
+        currentReportMode = mode === 'ev' ? 'ev' : 'fuel';
+
+        const reportHeading = document.querySelector('.report-title h2');
+        const infoButton = document.getElementById('fuel-report-info');
+
+        if (reportHeading) {
+            reportHeading.textContent = currentReportMode === 'ev' ? 'EV Details' : 'Fuel Reports';
+        }
+
+        if (infoButton) {
+            infoButton.title = currentReportMode === 'ev'
+                ? 'Green rows indicate charging sessions.'
+                : 'Green rows indicate full-tank fuel entries.';
+        }
+
+        const reportLegend = document.getElementById('fuel-report-legend');
+        if (reportLegend) {
+            reportLegend.innerHTML = currentReportMode === 'ev'
+                ? `
+                    <div class="legend-item">
+                        <span class="legend-color"></span>
+                        <span>Charging Session</span>
+                    </div>
+                    <div class="legend-description">
+                        <span class="legend-2">-- </span>
+                        <span>No Previous Charging Session</span>
+                    </div>
+                `
+                : `
+                    <div class="legend-item">
+                        <span class="legend-color"></span>
+                        <span>Full-Tank Fuel Entry</span>
+                    </div>
+                    <div class="legend-description">
+                        <span class="legend-2">-- </span>
+                        <span>No Previous Full-Tank Entry</span>
+                    </div>
+                `;
+        }
+    }
+
+    function syncReportModeToSelection(vehicleId) {
+        if (!vehicleId) {
+            setReportMode(currentReportMode);
+            return;
+        }
+
+        setReportMode(isElectricVehicle(vehicleId) ? 'ev' : 'fuel');
+    }
+
+    function updateEntryFormMode(vehicleId) {
+        const fuelFields = document.getElementById('fuel-entry-fields');
+        const evFields = document.getElementById('ev-entry-fields');
+        const addEntryTitle = document.getElementById('add-entry-title');
+        const submitButton = document.getElementById('add-entry-submit');
+        const isElectric = isElectricVehicle(vehicleId);
+        const fuelRequiredFields = [
+            document.getElementById('entry-liters'),
+            document.getElementById('entry-price'),
+            document.getElementById('entry-total')
+        ];
+        const evRequiredFields = [
+            document.getElementById('entry-energy'),
+            document.getElementById('entry-charging-cost')
+        ];
+        const fuelOptionalFields = [document.getElementById('entry-full-tank')];
+        const evOptionalFields = [
+            document.getElementById('entry-charging-type'),
+            document.getElementById('entry-charging-end-time')
+        ];
+
+        fuelRequiredFields.forEach(input => {
+            if (!input) return;
+            input.required = !isElectric;
+            input.disabled = isElectric;
+        });
+
+        evRequiredFields.forEach(input => {
+            if (!input) return;
+            input.required = isElectric;
+            input.disabled = !isElectric;
+        });
+
+        fuelOptionalFields.forEach(input => {
+            if (!input) return;
+            input.disabled = isElectric;
+        });
+
+        evOptionalFields.forEach(input => {
+            if (!input) return;
+            input.disabled = !isElectric;
+        });
+
+        if (fuelFields) {
+            fuelFields.classList.toggle('hidden', isElectric);
+        }
+
+        if (evFields) {
+            evFields.classList.toggle('hidden', !isElectric);
+        }
+
+        if (addEntryTitle) {
+            addEntryTitle.textContent = isElectric ? 'Add Charging Session' : 'Add Fuel Entry';
+        }
+
+        if (submitButton) {
+            submitButton.textContent = isElectric ? 'Save Session' : 'Save Entry';
+        }
+    }
     
     if (document.querySelector('.settings-tab-btn')) {
         switchSettingsTab('profile');
@@ -137,6 +314,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const addEntryForm = document.getElementById('add-entry-form');
         if (addEntryForm) {
             addEntryForm.addEventListener('submit', handleAddEntry);
+            updateEntryFormMode(document.getElementById('entry-vehicle')?.value || '');
             
             // Set initial date and time
             setCurrentDateTime();
@@ -153,6 +331,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         if (totalInput) {
                             totalInput.value = '';
                         }
+                        updateEntryFormMode(document.getElementById('entry-vehicle')?.value || '');
                     }, 10);
                 });
             }
@@ -161,6 +340,13 @@ document.addEventListener('DOMContentLoaded', function() {
             const litersInput = document.getElementById('entry-liters');
             const priceInput = document.getElementById('entry-price');
             const totalInput = document.getElementById('entry-total');
+            const entryVehicleSelect = document.getElementById('entry-vehicle');
+
+            if (entryVehicleSelect) {
+                entryVehicleSelect.addEventListener('change', function() {
+                    updateEntryFormMode(this.value);
+                });
+            }
             
             // Track which field was last modified to prevent circular calculations
             let lastModified = null;
@@ -278,6 +464,13 @@ document.addEventListener('DOMContentLoaded', function() {
             });
             
             document.getElementById('generate-report-btn').addEventListener('click', generateReport);
+        }
+
+        const reportVehicleSelect = document.getElementById('report-vehicle-select');
+        if (reportVehicleSelect) {
+            reportVehicleSelect.addEventListener('change', function() {
+                syncReportModeToSelection(this.value);
+            });
         }
         
         // Settings forms
@@ -924,6 +1117,260 @@ document.addEventListener('DOMContentLoaded', function() {
             statElement.textContent = formatLastOilChangeDistance(distanceSinceLastOilChange);
         }
     }
+
+    function renderDashboardChart(chartData, isElectric) {
+        if (consumptionChart) {
+            consumptionChart.destroy();
+            consumptionChart = null;
+        }
+
+        const now = new Date();
+        const sixMonthStart = new Date(now.getFullYear(), now.getMonth() - 5, 1, 0, 0, 0, 0);
+        const sixMonthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+
+        const chartPoints = (Array.isArray(chartData) ? chartData : [])
+            .filter(point => {
+                const date = parseApiDateAsEntered(point.date);
+                return (
+                    !Number.isNaN(date?.getTime()) &&
+                    date >= sixMonthStart &&
+                    date <= sixMonthEnd &&
+                    point.efficiency != null &&
+                    Number.isFinite(Number(point.efficiency))
+                );
+            })
+            .sort((a, b) => parseApiDateAsEntered(a.date).getTime() - parseApiDateAsEntered(b.date).getTime())
+            .map(point => ({
+                x: parseApiDateAsEntered(point.date).getTime(),
+                y: Number(point.efficiency),
+                entry: point
+            }));
+
+        const chartElement = document.getElementById('consumption-chart');
+        if (!chartElement) {
+            return;
+        }
+
+        const ctx = chartElement.getContext('2d');
+        consumptionChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                datasets: [{
+                    label: isElectric ? 'EV Efficiency' : 'Fuel Efficiency',
+                    data: chartPoints,
+                    parsing: false,
+                    borderColor: 'rgb(75, 192, 192)',
+                    backgroundColor: 'rgba(75, 192, 192, 0.1)',
+                    pointBackgroundColor: 'rgb(75, 192, 192)',
+                    pointBorderColor: 'rgb(75, 192, 192)',
+                    pointRadius: 5,
+                    pointHoverRadius: 7,
+                    borderWidth: 2,
+                    showLine: true,
+                    tension: 0.2,
+                    fill: false,
+                    spanGaps: false
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                interaction: {
+                    mode: 'nearest',
+                    intersect: false
+                },
+                scales: {
+                    x: {
+                        type: 'linear',
+                        min: sixMonthStart.getTime(),
+                        max: sixMonthEnd.getTime(),
+                        display: true,
+                        title: {
+                            display: true,
+                            text: 'Last 6 Months'
+                        },
+                        ticks: {
+                            autoSkip: false,
+                            maxTicksLimit: 6,
+                            callback: function(value) {
+                                return new Date(value).toLocaleDateString(undefined, {
+                                    month: 'short',
+                                    year: 'numeric'
+                                });
+                            }
+                        },
+                        grid: {
+                            display: true
+                        }
+                    },
+                    y: {
+                        beginAtZero: false,
+                        title: {
+                            display: true,
+                            text: isElectric ? 'Kilometers per kWh (km/kWh)' : 'Kilometers per Liter (KM/L)'
+                        },
+                        ticks: {
+                            callback: value => isElectric ? `${value} km/kWh` : `${value} KM/L`
+                        }
+                    }
+                },
+                plugins: {
+                    title: {
+                        display: true,
+                        text: chartPoints.length > 0
+                            ? (isElectric ? 'EV Efficiency - Last 6 Months' : 'Fuel Efficiency - Last 6 Months')
+                            : (isElectric ? 'No completed charging intervals in the last 6 months' : 'No completed full-tank intervals in the last 6 months')
+                    },
+                    legend: {
+                        display: true
+                    },
+                    tooltip: {
+                        callbacks: {
+                            title: function(items) {
+                                if (!items.length) {
+                                    return '';
+                                }
+
+                                const point = items[0].raw?.entry;
+                                const date = point ? parseApiDateAsEntered(point.date) : new Date(items[0].parsed.x);
+                                return date.toLocaleDateString(undefined, {
+                                    day: '2-digit',
+                                    month: 'short',
+                                    year: 'numeric'
+                                });
+                            },
+                            label: function(context) {
+                                return isElectric
+                                    ? `Efficiency: ${Number(context.parsed.y).toFixed(2)} km/kWh`
+                                    : `Efficiency: ${Number(context.parsed.y).toFixed(2)} KM/L`;
+                            },
+                            afterLabel: function(context) {
+                                const point = context.raw?.entry;
+                                if (!point) {
+                                    return [];
+                                }
+
+                                const lines = [
+                                    `Distance: ${Number(point.distance || 0).toFixed(1)} km`
+                                ];
+
+                                if (isElectric) {
+                                    lines.push(`Energy used: ${Number(point.energy || 0).toFixed(2)} kWh`);
+                                    if (point.cost != null) {
+                                        lines.push(`Charging cost: ${Number(point.cost).toFixed(2)}`);
+                                    }
+                                    if (point.chargeMinutes != null) {
+                                        lines.push(`Charge time: ${formatDurationFromMinutes(point.chargeMinutes)}`);
+                                    }
+                                } else {
+                                    lines.push(`Fuel used: ${Number(point.liters || 0).toFixed(2)} L`);
+                                    if (point.cost != null) {
+                                        lines.push(`Fuel cost: ${Number(point.cost).toFixed(2)}`);
+                                    }
+                                    const partialCount = Number(point.partialFillCount || 0);
+                                    if (partialCount > 0) {
+                                        lines.push(`Partial fills included: ${partialCount}`);
+                                    }
+                                }
+
+                                if (point.startDate) {
+                                    lines.push(`From: ${parseApiDateAsEntered(point.startDate).toLocaleDateString(undefined, { day: '2-digit', month: 'short', year: 'numeric' })}`);
+                                }
+
+                                if (point.endDate) {
+                                    lines.push(`To: ${parseApiDateAsEntered(point.endDate).toLocaleDateString(undefined, { day: '2-digit', month: 'short', year: 'numeric' })}`);
+                                }
+
+                                return lines;
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    function renderDashboardRecentEntries(recentEntries, isElectric) {
+        const tbody = document.querySelector('#recent-entries-table tbody');
+        const thead = document.querySelector('#recent-entries-table thead');
+
+        if (!tbody || !thead) {
+            return;
+        }
+
+        thead.innerHTML = isElectric
+            ? `
+                <tr>
+                    <th>Date</th>
+                    <th>Odometer</th>
+                    <th>KM</th>
+                    <th>Energy</th>
+                    <th>Cost</th>
+                    <th>Charge Time</th>
+                    <th>Type</th>
+                    <th>Actions</th>
+                </tr>
+            `
+            : `
+                <tr>
+                    <th>Date</th>
+                    <th>Odometer</th>
+                    <th>KM</th>
+                    <th>Liters</th>
+                    <th>Price/L</th>
+                    <th>Total</th>
+                    <th>Actions</th>
+                </tr>
+            `;
+
+        tbody.innerHTML = '';
+
+        if (!Array.isArray(recentEntries) || recentEntries.length === 0) {
+            tbody.innerHTML = isElectric
+                ? '<tr><td colspan="8">No charging sessions found. Add your first session!</td></tr>'
+                : '<tr><td colspan="7">No entries found. Add your first fuel entry!</td></tr>';
+            return;
+        }
+
+        recentEntries.forEach(entry => {
+            const row = document.createElement('tr');
+            row.classList.toggle('full-tank-row', !isElectric && entry.IsFullTank === true);
+
+            if (isElectric) {
+                row.innerHTML = `
+                    <td>${formatDateTime(entry.EntryDate)}</td>
+                    <td>${Number(entry.Odometer).toFixed(1)}</td>
+                    <td>${Number(entry.DistanceKm || 0).toFixed(1)}</td>
+                    <td>${Number(entry.EnergyAdded || 0).toFixed(2)} kWh</td>
+                    <td>${Number(entry.ChargingCost || 0).toFixed(2)}</td>
+                    <td>${formatDurationFromMinutes(entry.ChargeDurationMinutes)}</td>
+                    <td>${entry.ChargingType || '--'}</td>
+                    <td>
+                        <button class="btn-delete-entry" onclick="deleteEvChargingSession('${entry.SessionId}', '${entry.VehicleId}')" title="Delete Session">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </td>
+                `;
+            } else {
+                const distance = Number(entry.DistanceKm || 0);
+                row.innerHTML = `
+                    <td>${formatDateTime(entry.EntryDate)}</td>
+                    <td>${Number(entry.Odometer).toFixed(1)}</td>
+                    <td>${distance > 0 ? distance.toFixed(1) : '0.0'}</td>
+                    <td>${Number(entry.Liters || 0).toFixed(2)}</td>
+                    <td>${entry.PricePerLiter == null ? '--' : Number(entry.PricePerLiter).toFixed(2)}</td>
+                    <td>${Number(entry.TotalCost || 0).toFixed(2)}</td>
+                    <td>
+                        <button class="btn-delete-entry" onclick="deleteFuelEntry('${entry.EntryId}', '${entry.VehicleId}')" title="Delete Entry">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </td>
+                `;
+            }
+
+            tbody.appendChild(row);
+        });
+    }
     
     // Helper function to reposition all toasts after one is removed
     function repositionToasts() {
@@ -1074,6 +1521,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 await loadVehicleStats(userVehicles[0].VehicleId);
             } else {
                 // Show empty state
+                setDashboardMode(false);
                 document.getElementById('avg-consumption').textContent = '--';
                 document.getElementById('total-distance').textContent = '--';
                 document.getElementById('total-fuel').textContent = '--';
@@ -1089,35 +1537,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     type: 'line',
                     data: {
                         labels: [],
-                        datasets: [
-    {
-        label: 'Full Tank',
-        data: fullTankPoints,
-        parsing: false,
-        borderColor: 'rgb(75, 192, 192)',
-        backgroundColor: 'rgb(75, 192, 192)',
-        pointBackgroundColor: 'rgb(75, 192, 192)',
-        pointBorderColor: 'rgb(75, 192, 192)',
-        pointRadius: 5,
-        pointHoverRadius: 7,
-        showLine: true,
-        tension: 0.2,
-        fill: false
-    },
-    {
-        label: 'Partial Fuel',
-        data: partialFuelPoints,
-        parsing: false,
-        borderColor: 'rgb(255, 159, 64)',
-        backgroundColor: 'rgb(255, 159, 64)',
-        pointBackgroundColor: 'rgb(255, 159, 64)',
-        pointBorderColor: 'rgb(255, 159, 64)',
-        pointRadius: 7,
-        pointHoverRadius: 9,
-        pointStyle: 'triangle',
-        showLine: false
-    }
-]
+                        datasets: []
                     },
                     options: {
                         responsive: true,
@@ -1125,6 +1545,12 @@ document.addEventListener('DOMContentLoaded', function() {
                         scales: {
                             y: {
                                 beginAtZero: false
+                            }
+                        },
+                        plugins: {
+                            title: {
+                                display: true,
+                                text: 'No vehicles available'
                             }
                         }
                     }
@@ -1202,6 +1628,8 @@ document.addEventListener('DOMContentLoaded', function() {
         // Update the reference to point to the new elements
         const updatedDashboardSelect = document.getElementById('dashboard-vehicle-select');
         const updatedMobileDashboardSelect = document.getElementById('mobile-dashboard-vehicle-select');
+        const updatedEntrySelect = document.getElementById('entry-vehicle');
+        const updatedReportSelect = document.getElementById('report-vehicle-select');
         
         // Add event listener to the desktop dashboard vehicle selector
         updatedDashboardSelect.addEventListener('change', function() {
@@ -1223,6 +1651,14 @@ document.addEventListener('DOMContentLoaded', function() {
                 loadVehicleStats(this.value);
             }
         });
+
+        if (updatedEntrySelect) {
+            updateEntryFormMode(updatedEntrySelect.value);
+        }
+
+        if (updatedReportSelect) {
+            syncReportModeToSelection(updatedReportSelect.value);
+        }
     }
     
     async function loadVehicleStats(vehicleId) {
@@ -1238,6 +1674,115 @@ document.addEventListener('DOMContentLoaded', function() {
             if (!token) {
                 showToast('Please log in again', 'error');
                 handleLogout();
+                return;
+            }
+
+            const selectedVehicle = getVehicleById(vehicleId);
+            const isElectric = isElectricVehicle(selectedVehicle);
+            setDashboardMode(isElectric);
+
+            if (isElectric) {
+                const evResponse = await fetch(
+                    `${apiBaseUrl}/getEvStats?vehicleId=${encodeURIComponent(vehicleId)}`,
+                    {
+                        headers: {
+                            'Authorization': `Bearer ${token}`,
+                            'Content-Type': 'application/json'
+                        }
+                    }
+                );
+
+                if (evResponse.status === 401) {
+                    showToast('Session expired. Please log in again.', 'error');
+                    localStorage.removeItem('fuelTrackerToken');
+                    localStorage.removeItem('fuelTrackerUser');
+                    handleLogout();
+                    return;
+                }
+
+                if (!evResponse.ok) {
+                    let errorMessage = 'Failed to load EV stats';
+
+                    try {
+                        const errorData = await evResponse.json();
+                        errorMessage = errorData.message || errorMessage;
+                    } catch {
+                        const errorText = await evResponse.text();
+                        if (errorText) {
+                            errorMessage = errorText;
+                        }
+                    }
+
+                    throw new Error(errorMessage);
+                }
+
+                const evData = await evResponse.json();
+                const evStats = evData.stats || {};
+                const evRecentEntries = Array.isArray(evData.recentEntries) ? evData.recentEntries : [];
+                const evChartData = Array.isArray(evData.chartData) ? evData.chartData : [];
+
+                if (selectedVehicle) {
+                    selectedVehicle.lastOdometer =
+                        evRecentEntries.length > 0
+                            ? evRecentEntries[0].Odometer
+                            : selectedVehicle.CurrentOdometer;
+                }
+
+                document.getElementById('avg-consumption').textContent =
+                    evStats.avgEfficiency == null ? '--' : Number(evStats.avgEfficiency).toFixed(2);
+                document.getElementById('total-distance').textContent =
+                    Number(evStats.totalDistance || 0).toFixed(1);
+                document.getElementById('total-fuel').textContent =
+                    Number(evStats.totalEnergy || 0).toFixed(1);
+                document.getElementById('total-cost').textContent =
+                    Number(evStats.totalCost || 0).toFixed(2);
+                const costPerKmElement = document.getElementById('cost-per-km');
+                if (costPerKmElement) {
+                    costPerKmElement.textContent = evStats.avgCostPerKm == null
+                        ? '--'
+                        : Number(evStats.avgCostPerKm).toFixed(2);
+                }
+                const lastStatElement = document.getElementById('last-oil-change-km');
+                if (lastStatElement) {
+                    lastStatElement.textContent = formatDurationFromMinutes(evStats.totalChargeTimeMinutes);
+                }
+
+                const trendElement = document.getElementById('consumption-trend');
+                const populatedChartPoints = evChartData
+                    .filter(point => point.efficiency != null && Number(point.efficiency) > 0)
+                    .sort((a, b) => new Date(a.date) - new Date(b.date));
+
+                if (populatedChartPoints.length >= 2) {
+                    const lastEfficiency = Number(populatedChartPoints[populatedChartPoints.length - 1].efficiency);
+                    const previousEfficiency = Number(populatedChartPoints[populatedChartPoints.length - 2].efficiency);
+
+                    if (previousEfficiency > 0) {
+                        const percentageChange = ((lastEfficiency - previousEfficiency) / previousEfficiency) * 100;
+                        const roundedChange = Number(percentageChange.toFixed(1));
+
+                        if (roundedChange >= 0.1) {
+                            trendElement.className = 'stat-trend up';
+                            trendElement.innerHTML = `<i class="fas fa-arrow-up"></i> ${roundedChange.toFixed(1)}%`;
+                        } else if (roundedChange <= -0.1) {
+                            trendElement.className = 'stat-trend down';
+                            trendElement.innerHTML = `<i class="fas fa-arrow-down"></i> ${Math.abs(roundedChange).toFixed(1)}%`;
+                        } else {
+                            trendElement.className = 'stat-trend neutral';
+                            trendElement.innerHTML = '<i class="fas fa-minus"></i>';
+                        }
+                    }
+                } else {
+                    trendElement.className = 'stat-trend';
+                    trendElement.innerHTML = '<i class="fas fa-minus"></i>';
+                }
+
+                if (evStats.calculationNote) {
+                    showToast(evStats.calculationNote, 'info');
+                }
+
+                renderDashboardChart(evChartData, true);
+                renderDashboardRecentEntries(evRecentEntries, true);
+                dashboardLoaded = true;
                 return;
             }
 
@@ -1770,11 +2315,9 @@ document.addEventListener('DOMContentLoaded', function() {
         const vehicleId = document.getElementById('entry-vehicle').value;
         const date = document.getElementById('entry-date').value;
         const odometer = parseFloat(document.getElementById('entry-odometer').value);
-        const liters = parseFloat(document.getElementById('entry-liters').value);
-        const pricePerLiter = parseFloat(document.getElementById('entry-price').value);
-        const totalCost = parseFloat(document.getElementById('entry-total').value);
-        const isFullTank = document.getElementById('entry-full-tank').checked;
         const notes = document.getElementById('entry-notes').value;
+        const vehicle = getVehicleById(vehicleId);
+        const isElectric = isElectricVehicle(vehicle);
         
         // Convert the date to properly preserve local time
         let entryDate = date;
@@ -1788,41 +2331,124 @@ document.addEventListener('DOMContentLoaded', function() {
                 entryDate = localISOTime;
             }
         }
-        
-        if (!vehicleId || !date || isNaN(odometer) || isNaN(liters) || isNaN(pricePerLiter)) {
+
+        if (!vehicleId || !date || isNaN(odometer)) {
             showToast('Please fill in all required fields with valid values', 'error');
             return;
         }
-        
-        // Warn about unusually high fuel prices (likely user error)
-        // if (pricePerLiter > 10) {
-        //     const proceed = confirm(`Warning: Price per liter (${pricePerLiter}) seems unusually high. Did you mean ${(pricePerLiter/100).toFixed(2)} instead? Click OK to continue with ${pricePerLiter}, or Cancel to review.`);
-        //     if (!proceed) {
-        //         return;
-        //     }
-        // }
-        
-        // Validate the total cost calculation
-        const expectedTotal = liters * pricePerLiter;
-        if (Math.abs(totalCost - expectedTotal) > 0.01) {
-            console.warn(`Total cost mismatch: Form shows ${totalCost}, calculated ${expectedTotal}`);
-        }
-        
-        // Validate odometer reading progression
-        if (userVehicles.length > 0) {
-            const currentVehicle = userVehicles.find(v => v.VehicleId === vehicleId);
-            if (currentVehicle && currentVehicle.lastOdometer && odometer <= currentVehicle.lastOdometer) {
-                const proceed = confirm(`Warning: Odometer reading (${odometer} km) is not greater than the last recorded reading (${currentVehicle.lastOdometer} km). This may affect fuel efficiency calculations. Do you want to continue?`);
-                if (!proceed) {
-                    return;
+
+        if (!isElectric) {
+            const liters = parseFloat(document.getElementById('entry-liters').value);
+            const pricePerLiter = parseFloat(document.getElementById('entry-price').value);
+            const totalCost = parseFloat(document.getElementById('entry-total').value);
+            const isFullTank = document.getElementById('entry-full-tank').checked;
+
+            if (isNaN(liters) || isNaN(pricePerLiter)) {
+                showToast('Please fill in all required fields with valid values', 'error');
+                return;
+            }
+
+            // Validate the total cost calculation
+            const expectedTotal = liters * pricePerLiter;
+            if (Math.abs(totalCost - expectedTotal) > 0.01) {
+                console.warn(`Total cost mismatch: Form shows ${totalCost}, calculated ${expectedTotal}`);
+            }
+
+            // Validate odometer reading progression
+            if (userVehicles.length > 0) {
+                const currentVehicle = getVehicleById(vehicleId);
+                if (currentVehicle && currentVehicle.lastOdometer && odometer <= currentVehicle.lastOdometer) {
+                    const proceed = confirm(`Warning: Odometer reading (${odometer} km) is not greater than the last recorded reading (${currentVehicle.lastOdometer} km). This may affect fuel efficiency calculations. Do you want to continue?`);
+                    if (!proceed) {
+                        return;
+                    }
                 }
             }
+
+            try {
+                showLoading();
+
+                const token = localStorage.getItem('fuelTrackerToken');
+
+                if (!token) {
+                    showToast('Please log in again', 'error');
+                    handleLogout();
+                    return;
+                }
+
+                const response = await fetch(`${apiBaseUrl}/fuelEntries`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({
+                        vehicleId,
+                        odometer,
+                        liters,
+                        pricePerLiter,
+                        totalCost: totalCost || (liters * pricePerLiter),
+                        isFullTank,
+                        notes,
+                        entryDate: entryDate
+                    })
+                });
+
+                if (response.status === 401) {
+                    showToast('Session expired. Please log in again.', 'error');
+                    localStorage.removeItem('fuelTrackerToken');
+                    localStorage.removeItem('fuelTrackerUser');
+                    handleLogout();
+                    return;
+                }
+
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    throw new Error(`Failed to add fuel entry: ${errorText}`);
+                }
+
+                await response.json();
+
+                showToast('Fuel entry added successfully', 'success');
+                document.getElementById('add-entry-form').reset();
+                setCurrentDateTime();
+                updateEntryFormMode(document.getElementById('entry-vehicle')?.value || '');
+
+                const dashboardSelect = document.getElementById('dashboard-vehicle-select');
+                if (dashboardSelect.value === vehicleId) {
+                    await loadVehicleStats(vehicleId);
+                }
+            } catch (error) {
+                showToast(error.message, 'error');
+            } finally {
+                hideLoading();
+            }
+
+            return;
         }
-        
+
+        const energyAdded = parseFloat(document.getElementById('entry-energy').value);
+        const chargingCost = parseFloat(document.getElementById('entry-charging-cost').value);
+        const chargingType = document.getElementById('entry-charging-type').value;
+        const chargingEndTimeValue = document.getElementById('entry-charging-end-time').value;
+
+        if (isNaN(energyAdded) || isNaN(chargingCost)) {
+            showToast('Please fill in all required fields with valid values', 'error');
+            return;
+        }
+
+        let chargingEndTime = chargingEndTimeValue;
+        if (chargingEndTimeValue) {
+            const localEndDate = new Date(chargingEndTimeValue);
+            if (!isNaN(localEndDate.getTime())) {
+                const offsetMs = localEndDate.getTimezoneOffset() * 60000;
+                chargingEndTime = new Date(localEndDate.getTime() - offsetMs).toISOString();
+            }
+        }
+
         try {
             showLoading();
-            
-            // Get token from localStorage to ensure it's fresh
+
             const token = localStorage.getItem('fuelTrackerToken');
 
             if (!token) {
@@ -1830,8 +2456,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 handleLogout();
                 return;
             }
-            
-            const response = await fetch(`${apiBaseUrl}/fuelEntries`, {
+
+            const response = await fetch(`${apiBaseUrl}/evChargingSessions`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -1840,16 +2466,15 @@ document.addEventListener('DOMContentLoaded', function() {
                 body: JSON.stringify({
                     vehicleId,
                     odometer,
-                    liters,
-                    pricePerLiter,
-                    totalCost: totalCost || (liters * pricePerLiter),
-                    isFullTank,
+                    energyAdded,
+                    chargingCost,
+                    chargingType,
+                    chargingEndTime: chargingEndTime || null,
                     notes,
                     entryDate: entryDate
                 })
             });
-            
-            // Handle unauthorized response
+
             if (response.status === 401) {
                 showToast('Session expired. Please log in again.', 'error');
                 localStorage.removeItem('fuelTrackerToken');
@@ -1857,21 +2482,19 @@ document.addEventListener('DOMContentLoaded', function() {
                 handleLogout();
                 return;
             }
-            
+
             if (!response.ok) {
                 const errorText = await response.text();
-                throw new Error(`Failed to add fuel entry: ${errorText}`);
+                throw new Error(`Failed to add charging session: ${errorText}`);
             }
-            
-            const data = await response.json();
-            
-            showToast('Fuel entry added successfully', 'success');
+
+            await response.json();
+
+            showToast('Charging session added successfully', 'success');
             document.getElementById('add-entry-form').reset();
-            
-            // Reset date to current time after form reset
             setCurrentDateTime();
-            
-            // Reload dashboard if on the same vehicle
+            updateEntryFormMode(document.getElementById('entry-vehicle')?.value || '');
+
             const dashboardSelect = document.getElementById('dashboard-vehicle-select');
             if (dashboardSelect.value === vehicleId) {
                 await loadVehicleStats(vehicleId);
@@ -1887,6 +2510,8 @@ document.addEventListener('DOMContentLoaded', function() {
     async function generateReport() {
         const vehicleId = document.getElementById('report-vehicle-select').value;
         const period = document.getElementById('report-period').value;
+        const selectedVehicle = getVehicleById(vehicleId);
+        const isElectric = isElectricVehicle(selectedVehicle);
         
         let startDate, endDate = new Date();
         
@@ -1930,6 +2555,384 @@ document.addEventListener('DOMContentLoaded', function() {
                 return;
             }
 
+            if (!vehicleId) {
+                const fuelVehicles = userVehicles.filter(vehicle => !isElectricVehicle(vehicle));
+                const evVehicles = userVehicles.filter(vehicle => isElectricVehicle(vehicle));
+
+                const buildDateParams = () => {
+                    const params = new URLSearchParams();
+
+                    if (startDate) {
+                        const startUtc = new Date(Date.UTC(
+                            startDate.getFullYear(),
+                            startDate.getMonth(),
+                            startDate.getDate(),
+                            0,
+                            0,
+                            0,
+                            0
+                        ));
+                        params.append('startDate', startUtc.toISOString());
+                    }
+
+                    if (endDate) {
+                        const endUtc = new Date(Date.UTC(
+                            endDate.getFullYear(),
+                            endDate.getMonth(),
+                            endDate.getDate(),
+                            23,
+                            59,
+                            59,
+                            999
+                        ));
+                        params.append('endDate', endUtc.toISOString());
+                    }
+
+                    return params;
+                };
+
+                const fetchFuelEntries = async () => {
+                    if (fuelVehicles.length === 0) {
+                        return [];
+                    }
+
+                    const params = buildDateParams();
+                    const queryString = params.toString();
+                    const url = queryString ? `${apiBaseUrl}/getFuelEntries?${queryString}` : `${apiBaseUrl}/getFuelEntries`;
+                    const response = await fetch(url, {
+                        headers: {
+                            'Authorization': `Bearer ${token}`,
+                            'Content-Type': 'application/json'
+                        }
+                    });
+
+                    if (response.status === 401) {
+                        showToast('Session expired. Please log in again.', 'error');
+                        localStorage.removeItem('fuelTrackerToken');
+                        handleLogout();
+                        return [];
+                    }
+
+                    if (!response.ok) {
+                        const errorText = await response.text();
+                        throw new Error(`Failed to load fuel report data: ${errorText}`);
+                    }
+
+                    const data = await response.json();
+                    return Array.isArray(data) ? data : [];
+                };
+
+                const fetchEvEntriesForVehicle = async (vehicle) => {
+                    const params = buildDateParams();
+                    params.append('vehicleId', vehicle.VehicleId);
+                    params.append('includeAll', 'true');
+
+                    const queryString = params.toString();
+                    const url = queryString ? `${apiBaseUrl}/getEvStats?${queryString}` : `${apiBaseUrl}/getEvStats`;
+                    const response = await fetch(url, {
+                        headers: {
+                            'Authorization': `Bearer ${token}`,
+                            'Content-Type': 'application/json'
+                        }
+                    });
+
+                    if (response.status === 401) {
+                        showToast('Session expired. Please log in again.', 'error');
+                        localStorage.removeItem('fuelTrackerToken');
+                        handleLogout();
+                        return [];
+                    }
+
+                    if (!response.ok) {
+                        const errorText = await response.text();
+                        throw new Error(`Failed to load EV report data: ${errorText}`);
+                    }
+
+                    const data = await response.json();
+                    const recentEntries = Array.isArray(data.recentEntries) ? data.recentEntries : [];
+
+                    return recentEntries.map(entry => ({
+                        ...entry,
+                        VehicleId: vehicle.VehicleId,
+                        VehicleName: `${vehicle.Make} ${vehicle.Model} (${vehicle.Year})`,
+                        ReportSource: 'ev'
+                    }));
+                };
+
+                const [fuelEntries, evEntryGroups] = await Promise.all([
+                    fetchFuelEntries(),
+                    evVehicles.length > 0
+                        ? Promise.all(evVehicles.map(fetchEvEntriesForVehicle))
+                        : Promise.resolve([])
+                ]);
+
+                const evEntries = evEntryGroups.flat();
+                const combinedEntries = [
+                    ...fuelEntries.map(entry => ({
+                        ...entry,
+                        ReportSource: 'fuel'
+                    })),
+                    ...evEntries
+                ];
+
+                if (combinedEntries.length === 0) {
+                    showToast('No report data found for the selected criteria', 'info');
+                    return;
+                }
+
+                const vehicleMap = {};
+                userVehicles.forEach(vehicle => {
+                    vehicleMap[vehicle.VehicleId] = `${vehicle.Make} ${vehicle.Model} (${vehicle.Year})`;
+                });
+
+                const mixedTableHead = document.querySelector('#report-table thead tr');
+                if (mixedTableHead) {
+                    mixedTableHead.innerHTML = `
+                        <th>Date</th>
+                        <th>Vehicle</th>
+                        <th>Odometer</th>
+                        <th>KM</th>
+                        <th>Energy / Fuel</th>
+                        <th>Cost</th>
+                        <th>Type</th>
+                        <th>Efficiency</th>
+                        <th>Actions</th>
+                    `;
+                }
+
+                if (reportConsumptionChart) {
+                    reportConsumptionChart.destroy();
+                }
+
+                if (reportCostChart) {
+                    reportCostChart.destroy();
+                }
+
+                const sortedEntries = combinedEntries.sort((a, b) => {
+                    const dateA = new Date(a.EntryDate || a.ChargeStartTime || a.ChargingDate || 0);
+                    const dateB = new Date(b.EntryDate || b.ChargeStartTime || b.ChargingDate || 0);
+
+                    if (dateA.getTime() !== dateB.getTime()) {
+                        return dateB.getTime() - dateA.getTime();
+                    }
+
+                    return (Number(b.Odometer) || 0) - (Number(a.Odometer) || 0);
+                });
+
+                const getEntryDateValue = (entry) => entry.EntryDate || entry.ChargeStartTime || entry.ChargingDate || entry.CreatedAt || null;
+                const getMonthKey = (entry) => {
+                    const date = new Date(getEntryDateValue(entry));
+                    if (Number.isNaN(date.getTime())) {
+                        return null;
+                    }
+
+                    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+                };
+
+                const monthBuckets = {};
+                sortedEntries.forEach(entry => {
+                    const monthKey = getMonthKey(entry);
+                    if (!monthKey) {
+                        return;
+                    }
+
+                    if (!monthBuckets[monthKey]) {
+                        monthBuckets[monthKey] = {
+                            fuelCost: 0,
+                            fuelDistance: 0,
+                            fuelLiters: 0,
+                            evCost: 0,
+                            evDistance: 0,
+                            evEnergy: 0
+                        };
+                    }
+
+                    const bucket = monthBuckets[monthKey];
+
+                    if (entry.ReportSource === 'ev') {
+                        const distance = Number(entry.DistanceKm) || 0;
+                        const energy = Number(entry.EnergyAdded) || 0;
+                        const cost = Number(entry.ChargingCost) || 0;
+
+                        bucket.evCost += cost;
+                        bucket.evDistance += distance;
+                        bucket.evEnergy += energy;
+                    } else {
+                        const mileage = Number(entry.Mileage) || 0;
+                        const liters = Number(entry.Liters) || 0;
+                        const cost = Number(entry.TotalCost) || 0;
+
+                        bucket.fuelCost += cost;
+                        bucket.fuelLiters += liters;
+                        bucket.fuelDistance += mileage > 0 && liters > 0 ? mileage * liters : 0;
+                    }
+                });
+
+                const monthKeys = Object.keys(monthBuckets).sort();
+                const chartLabels = monthKeys.map(monthKey => {
+                    const [year, month] = monthKey.split('-');
+                    return `${String(Number(month)).padStart(2, '0')}-${year}`;
+                });
+
+                const fuelEfficiencyData = monthKeys.map(monthKey => {
+                    const bucket = monthBuckets[monthKey];
+                    return bucket.fuelLiters > 0 ? bucket.fuelDistance / bucket.fuelLiters : null;
+                });
+
+                const evEfficiencyData = monthKeys.map(monthKey => {
+                    const bucket = monthBuckets[monthKey];
+                    return bucket.evEnergy > 0 ? bucket.evDistance / bucket.evEnergy : null;
+                });
+
+                const totalCostData = monthKeys.map(monthKey => {
+                    const bucket = monthBuckets[monthKey];
+                    return bucket.fuelCost + bucket.evCost;
+                });
+
+                const consumptionCtx = document.getElementById('report-consumption-chart').getContext('2d');
+                reportConsumptionChart = new Chart(consumptionCtx, {
+                    type: 'bar',
+                    data: {
+                        labels: chartLabels,
+                        datasets: [
+                            {
+                                label: 'Fuel Efficiency (KM/L)',
+                                data: fuelEfficiencyData,
+                                backgroundColor: 'rgba(54, 162, 235, 0.7)',
+                                borderColor: 'rgba(54, 162, 235, 1)',
+                                borderWidth: 1
+                            },
+                            {
+                                label: 'EV Efficiency (km/kWh)',
+                                data: evEfficiencyData,
+                                backgroundColor: 'rgba(255, 159, 64, 0.7)',
+                                borderColor: 'rgba(255, 159, 64, 1)',
+                                borderWidth: 1
+                            }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            x: {
+                                type: 'category',
+                                display: true,
+                                title: {
+                                    display: true,
+                                    text: period === 'year' ? 'Month' : 'Period'
+                                }
+                            },
+                            y: {
+                                beginAtZero: true,
+                                title: {
+                                    display: true,
+                                    text: 'Efficiency'
+                                }
+                            }
+                        }
+                    }
+                });
+
+                const costCtx = document.getElementById('report-cost-chart').getContext('2d');
+                reportCostChart = new Chart(costCtx, {
+                    type: 'bar',
+                    data: {
+                        labels: chartLabels,
+                        datasets: [{
+                            label: 'Total Cost',
+                            data: totalCostData,
+                            backgroundColor: 'rgba(75, 192, 192, 0.7)',
+                            borderColor: 'rgba(75, 192, 192, 1)',
+                            borderWidth: 1
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            x: {
+                                type: 'category',
+                                display: true,
+                                title: {
+                                    display: true,
+                                    text: period === 'year' ? 'Month' : 'Period'
+                                }
+                            },
+                            y: {
+                                beginAtZero: true,
+                                title: {
+                                    display: true,
+                                    text: 'Total Cost'
+                                }
+                            }
+                        }
+                    }
+                });
+
+                const tableBody = document.querySelector('#report-table tbody');
+                tableBody.innerHTML = '';
+
+                sortedEntries.forEach(entry => {
+                    const row = document.createElement('tr');
+                    const entryDate = getEntryDateValue(entry);
+                    const dateLabel = entryDate ? formatDateTime(entryDate) : '--';
+                    const vehicleName = entry.VehicleName || vehicleMap[entry.VehicleId] || 'Unknown';
+                    const odometer = Number(entry.Odometer);
+                    const odometerLabel = Number.isFinite(odometer) ? odometer.toFixed(1) : '--';
+
+                    if (entry.ReportSource === 'ev') {
+                        const distance = Number(entry.DistanceKm) || 0;
+                        const energy = Number(entry.EnergyAdded) || 0;
+                        const efficiency = distance > 0 && energy > 0 ? (distance / energy).toFixed(2) : '--';
+
+                        row.innerHTML = `
+                            <td>${dateLabel}</td>
+                            <td>${vehicleName}</td>
+                            <td>${odometerLabel}</td>
+                            <td>${distance > 0 ? distance.toFixed(1) : '--'}</td>
+                            <td>${energy > 0 ? `${energy.toFixed(2)} kWh` : '--'}</td>
+                            <td>${(Number(entry.ChargingCost) || 0).toFixed(2)}</td>
+                            <td>${entry.ChargingType || 'EV'}</td>
+                            <td>${efficiency === '--' ? '--' : `${efficiency} km/kWh`}</td>
+                            <td>
+                                <button class="btn-delete-entry" 
+                                        onclick="deleteEvChargingSession('${entry.SessionId || entry.ChargingSessionId || ''}', '${entry.VehicleId}')"
+                                        title="Delete Entry">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </td>
+                        `;
+                    } else {
+                        const liters = Number(entry.Liters) || 0;
+                        const mileage = Number(entry.Mileage);
+                        const efficiency = Number.isFinite(mileage) && mileage >= 0 ? mileage.toFixed(2) : '--';
+
+                        row.innerHTML = `
+                            <td>${dateLabel}</td>
+                            <td>${vehicleName}</td>
+                            <td>${odometerLabel}</td>
+                            <td>${entry.DistanceKm ? Number(entry.DistanceKm).toFixed(1) : '--'}</td>
+                            <td>${liters > 0 ? `${liters.toFixed(2)} L` : '--'}</td>
+                            <td>${(Number(entry.TotalCost) || 0).toFixed(2)}</td>
+                            <td>${entry.IsFullTank === true ? 'Fuel' : 'Partial Fuel'}</td>
+                            <td>${efficiency === '--' ? '--' : `${efficiency} KM/L`}</td>
+                            <td>
+                                <button class="btn-delete-entry" 
+                                        onclick="deleteFuelEntry('${entry.EntryId}', '${entry.VehicleId}')"
+                                        title="Delete Entry">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </td>
+                        `;
+                    }
+
+                    tableBody.appendChild(row);
+                });
+
+                return;
+            }
+
             const params = new URLSearchParams();
 
 if (vehicleId) {
@@ -1967,6 +2970,267 @@ if (endDate) {
 
     params.append('endDate', endUtc.toISOString());
 }
+
+            if (isElectric) {
+                params.append('includeAll', 'true');
+
+                const queryString = params.toString();
+                const url = queryString ? `${apiBaseUrl}/getEvStats?${queryString}` : `${apiBaseUrl}/getEvStats`;
+
+                const response = await fetch(url, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                if (response.status === 401) {
+                    showToast('Session expired. Please log in again.', 'error');
+                    localStorage.removeItem('fuelTrackerToken');
+                    handleLogout();
+                    return;
+                }
+
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    throw new Error(`Failed to load EV sessions: ${errorText}`);
+                }
+
+                const entries = await response.json();
+                const evEntries = Array.isArray(entries.recentEntries)
+                    ? entries.recentEntries
+                    : [];
+
+                if (evEntries.length === 0) {
+                    showToast('No charging sessions found for the selected criteria', 'info');
+                    return;
+                }
+
+                const vehicleMap = {};
+                userVehicles.forEach(v => {
+                    vehicleMap[v.VehicleId] = `${v.Make} ${v.Model}`;
+                });
+
+                function calculateEvEfficiencyForPeriod(periodEntries) {
+                    let totalCost = 0;
+                    let totalEnergy = 0;
+                    let totalDistance = 0;
+                    let totalChargeTime = 0;
+
+                    periodEntries.forEach(entry => {
+                        totalCost += Number(entry.ChargingCost) || 0;
+                        totalEnergy += Number(entry.EnergyAdded) || 0;
+                        totalDistance += Number(entry.DistanceKm) || 0;
+                        totalChargeTime += Number(entry.ChargeDurationMinutes) || 0;
+                    });
+
+                    return {
+                        totalEnergy,
+                        totalCost,
+                        totalDistance,
+                        totalChargeTime,
+                        efficiency: totalEnergy > 0 ? totalDistance / totalEnergy : null
+                    };
+                }
+
+                let groupedData = {};
+                if (period === 'month' || period === 'year') {
+                    evEntries.forEach(entry => {
+                        const date = parseApiDateAsEntered(entry.EntryDate);
+                        const monthYear = date ? `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}` : null;
+
+                        if (!monthYear) return;
+
+                        if (!groupedData[monthYear]) {
+                            groupedData[monthYear] = [];
+                        }
+                        groupedData[monthYear].push(entry);
+                    });
+                } else {
+                    groupedData.custom = evEntries;
+                }
+
+                const monthlyData = {};
+                Object.keys(groupedData).forEach(groupKey => {
+                    const groupEntries = groupedData[groupKey];
+                    const result = calculateEvEfficiencyForPeriod(groupEntries);
+
+                    monthlyData[groupKey] = result;
+                });
+
+                const months = Object.keys(monthlyData).sort();
+                const efficiencyData = months.map(month => monthlyData[month].efficiency || 0);
+                const costData = months.map(month => monthlyData[month].totalCost);
+
+                if (reportConsumptionChart) {
+                    reportConsumptionChart.destroy();
+                }
+
+                let chartLabels;
+                let xAxisTitle;
+                if (period === 'custom') {
+                    const startDateFormatted = startDate.toLocaleDateString('en-GB', {
+                        day: '2-digit',
+                        month: '2-digit',
+                        year: 'numeric'
+                    });
+                    const endDateFormatted = endDate.toLocaleDateString('en-GB', {
+                        day: '2-digit',
+                        month: '2-digit',
+                        year: 'numeric'
+                    });
+                    chartLabels = [`${startDateFormatted} to ${endDateFormatted}`];
+                    xAxisTitle = 'Date Range';
+                } else {
+                    chartLabels = months.map(m => {
+                        const [year, month] = m.split('-');
+                        const date = new Date(year, month - 1);
+                        return `${String(date.getMonth() + 1).padStart(2, '0')}-${year}`;
+                    });
+                    xAxisTitle = period === 'year' ? 'Month' : 'Period';
+                }
+
+                const consumptionCtx = document.getElementById('report-consumption-chart').getContext('2d');
+                reportConsumptionChart = new Chart(consumptionCtx, {
+                    type: 'bar',
+                    data: {
+                        labels: chartLabels,
+                        datasets: [{
+                            label: 'Avg Efficiency (km/kWh)',
+                            data: efficiencyData,
+                            backgroundColor: 'rgba(54, 162, 235, 0.7)',
+                            borderColor: 'rgba(54, 162, 235, 1)',
+                            borderWidth: 1
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            x: {
+                                type: 'category',
+                                display: true,
+                                title: {
+                                    display: true,
+                                    text: xAxisTitle
+                                }
+                            },
+                            y: {
+                                beginAtZero: true,
+                                title: {
+                                    display: true,
+                                    text: 'Kilometers per kWh (km/kWh)'
+                                }
+                            }
+                        },
+                        plugins: {
+                            tooltip: {
+                                callbacks: {
+                                    label: function(context) {
+                                        return `${context.dataset.label}: ${context.parsed.y.toFixed(2)} km/kWh`;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                });
+
+                if (reportCostChart) {
+                    reportCostChart.destroy();
+                }
+
+                const costCtx = document.getElementById('report-cost-chart').getContext('2d');
+                reportCostChart = new Chart(costCtx, {
+                    type: 'bar',
+                    data: {
+                        labels: chartLabels,
+                        datasets: [{
+                            label: 'Energy Cost',
+                            data: costData,
+                            backgroundColor: 'rgba(255, 159, 64, 0.7)',
+                            borderColor: 'rgba(255, 159, 64, 1)',
+                            borderWidth: 1
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            x: {
+                                type: 'category',
+                                display: true,
+                                title: {
+                                    display: true,
+                                    text: xAxisTitle
+                                }
+                            },
+                            y: {
+                                beginAtZero: true,
+                                title: {
+                                    display: true,
+                                    text: 'Energy Cost'
+                                }
+                            }
+                        }
+                    }
+                });
+
+                const tableBody = document.querySelector('#report-table tbody');
+                const tableHead = document.querySelector('#report-table thead tr');
+
+                if (tableHead) {
+                    tableHead.innerHTML = `
+                        <th>Date</th>
+                        <th>Vehicle</th>
+                        <th>Odometer</th>
+                        <th>KM</th>
+                        <th>kWh</th>
+                        <th>Cost</th>
+                        <th>Charge Type</th>
+                        <th>Charge Time</th>
+                        <th>Efficiency</th>
+                        <th>Actions</th>
+                    `;
+                }
+
+                tableBody.innerHTML = '';
+
+                evEntries.sort((a, b) => {
+                    const dateA = new Date(a.EntryDate);
+                    const dateB = new Date(b.EntryDate);
+                    if (dateA.getTime() !== dateB.getTime()) {
+                        return dateB.getTime() - dateA.getTime();
+                    }
+                    return b.Odometer - a.Odometer;
+                });
+
+                evEntries.forEach(entry => {
+                    const efficiency = Number(entry.DistanceKm || 0) > 0 && Number(entry.EnergyAdded || 0) > 0
+                        ? Number(entry.DistanceKm) / Number(entry.EnergyAdded)
+                        : null;
+
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td>${formatDateTime(entry.EntryDate)}</td>
+                        <td>${vehicleMap[entry.VehicleId] || 'Unknown'}</td>
+                        <td>${Number(entry.Odometer).toFixed(1)}</td>
+                        <td>${Number(entry.DistanceKm || 0).toFixed(1)}</td>
+                        <td>${Number(entry.EnergyAdded || 0).toFixed(2)}</td>
+                        <td>${Number(entry.ChargingCost || 0).toFixed(2)}</td>
+                        <td>${entry.ChargingType || '--'}</td>
+                        <td>${formatDurationFromMinutes(entry.ChargeDurationMinutes)}</td>
+                        <td>${efficiency == null ? '--' : `${efficiency.toFixed(2)} km/kWh`}</td>
+                        <td>
+                            <button class="btn-delete-entry" onclick="deleteEvChargingSession('${entry.SessionId}', '${entry.VehicleId}')" title="Delete Session">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </td>
+                    `;
+                    tableBody.appendChild(row);
+                });
+
+                return;
+            }
 
             const queryString = params.toString();
             const url = queryString ? `${apiBaseUrl}/getFuelEntries?${queryString}` : `${apiBaseUrl}/getFuelEntries`;
@@ -2231,6 +3495,21 @@ if (endDate) {
             });
             
             // Update report table
+            const tableHead = document.querySelector('#report-table thead tr');
+            if (tableHead) {
+                tableHead.innerHTML = `
+                    <th>Date</th>
+                    <th>Vehicle</th>
+                    <th>Odometer</th>
+                    <th>KM</th>
+                    <th>Liters</th>
+                    <th>Price/L</th>
+                    <th>Total</th>
+                    <th>Consumption</th>
+                    <th>Actions</th>
+                `;
+            }
+
             const tableBody = document.querySelector('#report-table tbody');
             tableBody.innerHTML = '';
             
@@ -2388,9 +3667,63 @@ if (endDate) {
             hideLoading();
         }
     }
+
+    async function deleteEvChargingSession(sessionId, vehicleId) {
+        if (!confirm('Are you sure you want to delete this charging session? This action cannot be undone.')) {
+            return;
+        }
+
+        try {
+            showLoading();
+
+            const token = localStorage.getItem('fuelTrackerToken');
+
+            if (!token) {
+                showToast('Please log in again', 'error');
+                handleLogout();
+                return;
+            }
+
+            const response = await fetch(`${apiBaseUrl}/evChargingSessions/${encodeURIComponent(sessionId)}`, {
+                method: 'DELETE',
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            });
+
+            if (response.status === 401) {
+                showToast('Session expired. Please log in again.', 'error');
+                localStorage.removeItem('fuelTrackerToken');
+                handleLogout();
+                return;
+            }
+
+            if (!response.ok) {
+                const errorText = await response.text();
+                throw new Error(`Failed to delete charging session: ${errorText}`);
+            }
+
+            showToast('Charging session deleted successfully', 'success');
+
+            const dashboardSelect = document.getElementById('dashboard-vehicle-select');
+            if (dashboardSelect && dashboardSelect.value === vehicleId) {
+                await loadVehicleStats(vehicleId);
+            }
+
+            const reportTable = document.querySelector('#report-table tbody');
+            if (reportTable && reportTable.children.length > 0 && !reportTable.querySelector('td[colspan]')) {
+                await generateReport();
+            }
+        } catch (error) {
+            showToast(error.message, 'error');
+        } finally {
+            hideLoading();
+        }
+    }
     
     // Make deleteFuelEntry available globally for event handlers
     window.deleteFuelEntry = deleteFuelEntry;
+    window.deleteEvChargingSession = deleteEvChargingSession;
     
     // Make supporting functions globally accessible for deleteFuelEntry
     window.showLoading = showLoading;

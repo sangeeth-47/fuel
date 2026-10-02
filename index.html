@@ -142,7 +142,7 @@
                     <div class="stats-grid">
                         <div class="stat-card">
                             <div class="stat-value" id="avg-consumption">--</div>
-                            <div class="stat-label">Avg Efficiency (KM/L)</div>
+                            <div class="stat-label" id="avg-efficiency-label">Avg Efficiency (KM/L)</div>
                             <div class="stat-trend up" id="consumption-trend">
                                 <i class="fas fa-arrow-up"></i> 0%
                             </div>
@@ -150,22 +150,27 @@
                         
                         <div class="stat-card">
                             <div class="stat-value" id="total-distance">--</div>
-                            <div class="stat-label">Total Distance (km)</div>
+                            <div class="stat-label" id="total-distance-label">Total Distance (km)</div>
                         </div>
                         
                         <div class="stat-card">
                             <div class="stat-value" id="total-fuel">--</div>
-                            <div class="stat-label">Total Fuel (L)</div>
+                            <div class="stat-label" id="total-energy-label">Total Fuel (L)</div>
                         </div>
                         
                         <div class="stat-card">
                             <div class="stat-value" id="total-cost">--</div>
-                            <div class="stat-label">Total Cost</div>
+                            <div class="stat-label" id="total-cost-label">Total Cost</div>
+                        </div>
+
+                        <div class="stat-card" id="cost-per-km-card">
+                            <div class="stat-value" id="cost-per-km">--</div>
+                            <div class="stat-label" id="cost-per-km-label">Cost / km</div>
                         </div>
 
                         <div class="stat-card">
                             <div class="stat-value" id="last-oil-change-km">--</div>
-                            <div class="stat-label">Last Oil Change</div>
+                            <div class="stat-label" id="last-stat-label">Last Oil Change</div>
                         </div>
                     </div>
                     
@@ -199,7 +204,7 @@
                 <!-- Add Entry Tab -->
                 <div id="add-entry-tab" class="content-tab">
                     <div class="tab-header">
-                        <h2>Add Fuel Entry</h2>
+                        <h2 id="add-entry-title">Add Fuel Entry</h2>
                     </div>
                     
                     <form id="add-entry-form" class="entry-form">
@@ -223,31 +228,69 @@
                                 <label for="entry-odometer">Odometer (km)</label>
                                 <input type="number" id="entry-odometer" step="any" min="1" required>
                             </div>
-                            
-                            <div class="form-group">
-                                <label for="entry-liters">Liters</label>
-                                <input type="number" id="entry-liters" step="any" min="0.1" required>
+                        </div>
+
+                        <div id="fuel-entry-fields">
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="entry-liters">Liters</label>
+                                    <input type="number" id="entry-liters" step="any" min="0.1" required>
+                                </div>
+
+                                <div class="form-group">
+                                    <label for="entry-price">Price per Liter</label>
+                                    <input type="number" id="entry-price" step="any" min="10" required>
+                                </div>
+                            </div>
+
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="entry-total">Total Cost</label>
+                                    <input type="number" id="entry-total" step="any" min="1" required>
+                                </div>
+
+                                <div class="form-group">
+                                    <label for="entry-full-tank">
+                                        <input type="checkbox" id="entry-full-tank" checked>
+                                        Full Tank
+                                    </label>
+                                </div>
                             </div>
                         </div>
-                        
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label for="entry-price">Price per Liter</label>
-                                <input type="number" id="entry-price" step="any" min="10" required>
+
+                        <div id="ev-entry-fields" class="hidden">
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="entry-energy">Energy Added (kWh)</label>
+                                    <input type="number" id="entry-energy" step="any" min="0.1">
+                                </div>
+
+                                <div class="form-group">
+                                    <label for="entry-charging-cost">Charging Cost</label>
+                                    <input type="number" id="entry-charging-cost" step="any" min="0">
+                                </div>
                             </div>
-                            
-                            <div class="form-group">
-                                <label for="entry-total">Total Cost</label>
-                                <input type="number" id="entry-total" step="any" min="1" required>
+
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="entry-charging-type">Charging Type</label>
+                                    <select id="entry-charging-type">
+                                        <option value="">Select charging type</option>
+                                        <option value="Home">Home</option>
+                                        <option value="Public">Public</option>
+                                        <option value="Fast">Fast</option>
+                                        <option value="Ultra Fast">Ultra Fast</option>
+                                        <option value="Other">Other</option>
+                                    </select>
+                                </div>
+
+                                <div class="form-group">
+                                    <label for="entry-charging-end-time">Charging End Time (Optional)</label>
+                                    <input type="datetime-local" id="entry-charging-end-time">
+                                </div>
                             </div>
                         </div>
-                        
-                        <div class="form-group">
-                            <label for="entry-full-tank">
-                                <input type="checkbox" id="entry-full-tank" checked>
-                                Full Tank
-                            </label>
-                        </div>
+
                         
                         <div class="form-group">
                             <label for="entry-notes">Notes</label>
@@ -256,7 +299,7 @@
                         
                         <div class="form-actions">
                             <button type="reset" class="btn-secondary">Clear</button>
-                            <button type="submit" class="btn-primary">Save Entry</button>
+                            <button type="submit" class="btn-primary" id="add-entry-submit">Save Entry</button>
                         </div>
                     </form>
                 </div>
