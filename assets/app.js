@@ -2596,30 +2596,52 @@ document.addEventListener('DOMContentLoaded', function() {
                         return [];
                     }
 
-                    const params = buildDateParams();
-                    const queryString = params.toString();
-                    const url = queryString ? `${apiBaseUrl}/getFuelEntries?${queryString}` : `${apiBaseUrl}/getFuelEntries`;
-                    const response = await fetch(url, {
-                        headers: {
-                            'Authorization': `Bearer ${token}`,
-                            'Content-Type': 'application/json'
+                    const fetchForVehicle = async (vehicle) => {
+                        const params = buildDateParams();
+
+                        // Important: request fuel entries vehicle-by-vehicle so the API
+                        // can correctly calculate DistanceKm and IsInitialEntry.
+                        params.append('vehicleId', vehicle.VehicleId);
+
+                        const queryString = params.toString();
+                        const url = `${apiBaseUrl}/getFuelEntries?${queryString}`;
+
+                        const response = await fetch(url, {
+                            headers: {
+                                'Authorization': `Bearer ${token}`,
+                                'Content-Type': 'application/json'
+                            }
+                        });
+
+                        if (response.status === 401) {
+                            showToast('Session expired. Please log in again.', 'error');
+                            localStorage.removeItem('fuelTrackerToken');
+                            handleLogout();
+                            return [];
                         }
-                    });
 
-                    if (response.status === 401) {
-                        showToast('Session expired. Please log in again.', 'error');
-                        localStorage.removeItem('fuelTrackerToken');
-                        handleLogout();
-                        return [];
-                    }
+                        if (!response.ok) {
+                            const errorText = await response.text();
+                            throw new Error(`Failed to load fuel report data: ${errorText}`);
+                        }
 
-                    if (!response.ok) {
-                        const errorText = await response.text();
-                        throw new Error(`Failed to load fuel report data: ${errorText}`);
-                    }
+                        const data = await response.json();
 
-                    const data = await response.json();
-                    return Array.isArray(data) ? data : [];
+                        return Array.isArray(data)
+                            ? data.map(entry => ({
+                                ...entry,
+                                VehicleId: vehicle.VehicleId,
+                                VehicleName: `${vehicle.Make} ${vehicle.Model} (${vehicle.Year})`,
+                                ReportSource: 'fuel'
+                            }))
+                            : [];
+                    };
+
+                    const results = await Promise.all(
+                        fuelVehicles.map(fetchForVehicle)
+                    );
+
+                    return results.flat();
                 };
 
                 const fetchEvEntriesForVehicle = async (vehicle) => {
@@ -2655,7 +2677,12 @@ document.addEventListener('DOMContentLoaded', function() {
                         ...entry,
                         VehicleId: vehicle.VehicleId,
                         VehicleName: `${vehicle.Make} ${vehicle.Model} (${vehicle.Year})`,
-                        ReportSource: 'ev'
+                        ReportSource: 'ev',
+                        IsInitialEntry:
+                            entry.IsInitialEntry === true ||
+                            entry.IsInitialEntry === 1 ||
+                            entry.IsInitialEntry === '1' ||
+                            String(entry.IsInitialEntry).toLowerCase() === 'true'
                     }));
                 };
 
@@ -2729,6 +2756,88 @@ document.addEventListener('DOMContentLoaded', function() {
                     return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
                 };
 
+                // Calculate KM driven independently for each vehicle AND fuel type.
+                // Petrol mileage must never use an EV charging session's odometer
+                // as the previous petrol odometer.
+                const reportDistanceByEntry = new Map();
+                const entriesByVehicleAndSource = {};
+
+                combinedEntries.forEach(entry => {
+                    if (!entry.VehicleId) return;
+
+                    const source = entry.ReportSource === 'ev' ? 'ev' : 'fuel';
+                    const groupKey = `${source}:${entry.VehicleId}`;
+
+                    if (!entriesByVehicleAndSource[groupKey]) {
+                        entriesByVehicleAndSource[groupKey] = [];
+                    }
+
+                    entriesByVehicleAndSource[groupKey].push(entry);
+                });
+
+                Object.values(entriesByVehicleAndSource).forEach(sourceEntries => {
+                    sourceEntries.sort((a, b) => {
+                        const dateA = new Date(getEntryDateValue(a) || 0);
+                        const dateB = new Date(getEntryDateValue(b) || 0);
+                        const timeDiff = dateA.getTime() - dateB.getTime();
+
+                        if (timeDiff !== 0) return timeDiff;
+
+                        const idA = String(a.EntryId || a.SessionId || '');
+                        const idB = String(b.EntryId || b.SessionId || '');
+
+                        return idA.localeCompare(idB);
+                    });
+
+                    let previousOdometer = null;
+
+                    sourceEntries.forEach(entry => {
+                        const odometer = Number(entry.Odometer);
+
+                        const isInitialEntry =
+                            entry.IsInitialEntry === true ||
+                            entry.IsInitialEntry === 'true' ||
+                            entry.IsInitialEntry === 1 ||
+                            entry.IsInitialEntry === '1';
+
+                        const key = entry.ReportSource === 'ev'
+                            ? `ev:${entry.VehicleId}:${entry.SessionId || entry.EntryDate}:${entry.Odometer}`
+                            : `fuel:${entry.VehicleId}:${entry.EntryId || entry.EntryDate}:${entry.Odometer}`;
+
+                        // The first fuel/EV entry has no distance.
+                        // Do not use another vehicle or another energy source
+                        // as its previous odometer.
+                        if (
+                            isInitialEntry ||
+                            !Number.isFinite(odometer) ||
+                            !Number.isFinite(previousOdometer)
+                        ) {
+                            reportDistanceByEntry.set(key, 0);
+                        } else {
+                            const distance = odometer - previousOdometer;
+                            reportDistanceByEntry.set(
+                                key,
+                                distance > 0 ? distance : 0
+                            );
+                        }
+
+                        if (Number.isFinite(odometer)) {
+                            previousOdometer = odometer;
+                        }
+                    });
+                });
+
+                const getReportEntryDistance = (entry) => {
+                    const source = entry.ReportSource === 'ev' ? 'ev' : 'fuel';
+                    const key = source === 'ev'
+                        ? `ev:${entry.VehicleId}:${entry.SessionId || entry.EntryDate}:${entry.Odometer}`
+                        : `fuel:${entry.VehicleId}:${entry.EntryId || entry.EntryDate}:${entry.Odometer}`;
+
+                    return reportDistanceByEntry.has(key)
+                        ? Number(reportDistanceByEntry.get(key)) || 0
+                        : 0;
+                };
+
                 const monthBuckets = {};
                 sortedEntries.forEach(entry => {
                     const monthKey = getMonthKey(entry);
@@ -2764,7 +2873,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
                         bucket.fuelCost += cost;
                         bucket.fuelLiters += liters;
-                        bucket.fuelDistance += mileage > 0 && liters > 0 ? mileage * liters : 0;
+                        const reportDistance = getReportEntryDistance(entry);
+                        bucket.fuelDistance += reportDistance > 0 ? reportDistance : 0;
                     }
                 });
 
@@ -2884,19 +2994,32 @@ document.addEventListener('DOMContentLoaded', function() {
                     if (entry.ReportSource === 'ev') {
                         const distance = Number(entry.DistanceKm) || 0;
                         const energy = Number(entry.EnergyAdded) || 0;
-                        const efficiency = distance > 0 && energy > 0 ? (distance / energy).toFixed(2) : '--';
+
+                        const isInitialEntry =
+                            entry.IsInitialEntry === true ||
+                            entry.IsInitialEntry === 'true' ||
+                            entry.IsInitialEntry === 1 ||
+                            entry.IsInitialEntry === '1';
+
+                        const efficiency = isInitialEntry
+                            ? 'First Fuel Entry'
+                            : (distance > 0 && energy > 0
+                                ? (distance / energy).toFixed(2)
+                                : '--');
 
                         row.innerHTML = `
                             <td>${dateLabel}</td>
                             <td>${vehicleName}</td>
                             <td>${odometerLabel}</td>
-                            <td>${distance > 0 ? distance.toFixed(1) : '--'}</td>
+                            <td>${isInitialEntry ? 'First Fuel Entry' : (distance > 0 ? distance.toFixed(1) : '--')}</td>
                             <td>${energy > 0 ? `${energy.toFixed(2)} kWh` : '--'}</td>
                             <td>${(Number(entry.ChargingCost) || 0).toFixed(2)}</td>
                             <td>${entry.ChargingType || 'EV'}</td>
-                            <td>${efficiency === '--' ? '--' : `${efficiency} km/kWh`}</td>
+                            <td>${efficiency === 'First Fuel Entry' || efficiency === '--'
+                                ? efficiency
+                                : `${efficiency} km/kWh`}</td>
                             <td>
-                                <button class="btn-delete-entry" 
+                                <button class="btn-delete-entry"
                                         onclick="deleteEvChargingSession('${entry.SessionId || entry.ChargingSessionId || ''}', '${entry.VehicleId}')"
                                         title="Delete Entry">
                                     <i class="fas fa-trash"></i>
@@ -2906,17 +3029,36 @@ document.addEventListener('DOMContentLoaded', function() {
                     } else {
                         const liters = Number(entry.Liters) || 0;
                         const mileage = Number(entry.Mileage);
-                        const efficiency = Number.isFinite(mileage) && mileage >= 0 ? mileage.toFixed(2) : '--';
+
+                        const isInitialEntry =
+                            entry.IsInitialEntry === true ||
+                            entry.IsInitialEntry === 'true' ||
+                            entry.IsInitialEntry === 1 ||
+                            entry.IsInitialEntry === '1';
+
+                        const efficiency = isInitialEntry
+                            ? 'First Fuel Entry'
+                            : (
+                                Number.isFinite(mileage) && mileage >= 0
+                                    ? mileage.toFixed(2)
+                                    : '--'
+                            );
+
+                        const distance = getReportEntryDistance(entry);
 
                         row.innerHTML = `
                             <td>${dateLabel}</td>
                             <td>${vehicleName}</td>
                             <td>${odometerLabel}</td>
-                            <td>${entry.DistanceKm ? Number(entry.DistanceKm).toFixed(1) : '--'}</td>
+                            <td>${isInitialEntry
+                                ? 'First Fuel Entry'
+                                : (distance > 0 ? distance.toFixed(1) : '--')}</td>
                             <td>${liters > 0 ? `${liters.toFixed(2)} L` : '--'}</td>
                             <td>${(Number(entry.TotalCost) || 0).toFixed(2)}</td>
                             <td>${entry.IsFullTank === true ? 'Fuel' : 'Partial Fuel'}</td>
-                            <td>${efficiency === '--' ? '--' : `${efficiency} KM/L`}</td>
+                            <td>${efficiency === 'First Fuel Entry'
+                                ? efficiency
+                                : (efficiency === '--' ? '--' : `${efficiency} KM/L`)}</td>
                             <td>
                                 <button class="btn-delete-entry" 
                                         onclick="deleteFuelEntry('${entry.EntryId}', '${entry.VehicleId}')"
@@ -3205,8 +3347,15 @@ if (endDate) {
                 });
 
                 evEntries.forEach(entry => {
-                    const efficiency = Number(entry.DistanceKm || 0) > 0 && Number(entry.EnergyAdded || 0) > 0
-                        ? Number(entry.DistanceKm) / Number(entry.EnergyAdded)
+                    const isInitialEntry =
+                        entry.IsInitialEntry === true ||
+                        entry.IsInitialEntry === 1 ||
+                        entry.IsInitialEntry === '1' ||
+                        String(entry.IsInitialEntry).toLowerCase() === 'true';
+                    const distance = Number(entry.DistanceKm || 0);
+                    const energy = Number(entry.EnergyAdded || 0);
+                    const efficiency = !isInitialEntry && distance > 0 && energy > 0
+                        ? distance / energy
                         : null;
 
                     const row = document.createElement('tr');
@@ -3214,12 +3363,12 @@ if (endDate) {
                         <td>${formatDateTime(entry.EntryDate)}</td>
                         <td>${vehicleMap[entry.VehicleId] || 'Unknown'}</td>
                         <td>${Number(entry.Odometer).toFixed(1)}</td>
-                        <td>${Number(entry.DistanceKm || 0).toFixed(1)}</td>
-                        <td>${Number(entry.EnergyAdded || 0).toFixed(2)}</td>
+                        <td>${isInitialEntry ? 'First Fuel Entry' : (distance > 0 ? distance.toFixed(1) : '--')}</td>
+                        <td>${energy > 0 ? energy.toFixed(2) : '--'}</td>
                         <td>${Number(entry.ChargingCost || 0).toFixed(2)}</td>
                         <td>${entry.ChargingType || '--'}</td>
                         <td>${formatDurationFromMinutes(entry.ChargeDurationMinutes)}</td>
-                        <td>${efficiency == null ? '--' : `${efficiency.toFixed(2)} km/kWh`}</td>
+                        <td>${isInitialEntry ? 'First Fuel Entry' : (efficiency == null ? '--' : `${efficiency.toFixed(2)} km/kWh`)}</td>
                         <td>
                             <button class="btn-delete-entry" onclick="deleteEvChargingSession('${entry.SessionId}', '${entry.VehicleId}')" title="Delete Session">
                                 <i class="fas fa-trash"></i>
@@ -3567,7 +3716,10 @@ if (endDate) {
             //
             // Full-tank entry without a previous full-tank interval:
             //     "--"
-            if (entry.IsInitialEntry === true) {
+            if (entry.IsInitialEntry === true ||
+                entry.IsInitialEntry === 1 ||
+                entry.IsInitialEntry === '1' ||
+                String(entry.IsInitialEntry).toLowerCase() === 'true') {
                 consumption = 'First Fuel Entry';
             } else {
                 const apiMileage = getApiMileage(entry);
