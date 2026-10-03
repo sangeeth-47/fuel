@@ -777,7 +777,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
 
         // Validate response structure
-        if (!data.token || !data.userId) {
+        if (!data.token || !data.userId || !data.refreshToken) {
             throw new Error('Invalid login response format');
         }
         
@@ -798,6 +798,7 @@ document.addEventListener('DOMContentLoaded', function() {
         // Secure storage
         localStorage.setItem('fuelTrackerUser', JSON.stringify(currentUser));
         localStorage.setItem('fuelTrackerToken', data.token);
+        localStorage.setItem('fuelTrackerRefreshToken', data.refreshToken);
         
         // Passkey 
         const enableBtn = document.getElementById('enable-passkey-btn');
@@ -817,6 +818,7 @@ document.addEventListener('DOMContentLoaded', function() {
         // Clear any partial auth data on failure
         localStorage.removeItem('fuelTrackerUser');
         localStorage.removeItem('fuelTrackerToken');
+        localStorage.removeItem('fuelTrackerRefreshToken');
         currentUser = null;
         authToken = null;
         
@@ -829,6 +831,135 @@ document.addEventListener('DOMContentLoaded', function() {
         loginBtn.disabled = false;
         hideLoading();
     }
+}
+
+let refreshPromise = null;
+
+async function refreshAccessToken() {
+    if (refreshPromise) {
+        return refreshPromise;
+    }
+
+    const refreshSessionId = authSessionId;
+
+    refreshPromise = (async () => {
+        const refreshToken = localStorage.getItem('fuelTrackerRefreshToken');
+
+        if (!refreshToken) {
+            return false;
+        }
+
+        try {
+            const response = await fetch(
+                `${apiBaseUrl}/refresh-token`,
+                {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        refreshToken
+                    })
+                }
+            );
+
+            // The user logged out while the refresh request was running.
+            if (refreshSessionId !== authSessionId) {
+                return false;
+            }
+
+            if (!response.ok) {
+                return false;
+            }
+
+            const data = await response.json();
+
+            if (!data.token || !data.refreshToken) {
+                return false;
+            }
+
+            localStorage.setItem(
+                'fuelTrackerToken',
+                data.token
+            );
+
+            localStorage.setItem(
+                'fuelTrackerRefreshToken',
+                data.refreshToken
+            );
+
+            authToken = data.token;
+
+            return true;
+
+        } catch (error) {
+            console.error('Token refresh failed:', error);
+            return false;
+        } finally {
+            refreshPromise = null;
+        }
+    })();
+
+    return refreshPromise;
+}
+
+async function authenticatedFetch(url, options = {}) {
+    const requestSessionId = authSessionId;
+    const token = localStorage.getItem('fuelTrackerToken');
+
+    if (!token) {
+        handleLogout(false);
+        throw new Error('Authentication required');
+    }
+
+    const headers = {
+        ...(options.headers || {}),
+        Authorization: `Bearer ${token}`
+    };
+
+    let response = await fetch(url, {
+        ...options,
+        headers
+    });
+
+    if (response.status !== 401) {
+        return response;
+    }
+
+    // If this request belongs to an old session, never let it affect the
+    // current login session.
+    if (requestSessionId !== authSessionId) {
+        throw new Error('Authentication session changed');
+    }
+
+    const refreshed = await refreshAccessToken();
+
+    if (!refreshed) {
+        // Only log out the session that actually received the 401.
+        if (requestSessionId === authSessionId) {
+            handleLogout(false);
+        }
+        throw new Error('Session expired');
+    }
+
+    if (requestSessionId !== authSessionId) {
+        throw new Error('Authentication session changed');
+    }
+
+    const newToken = localStorage.getItem('fuelTrackerToken');
+
+    if (!newToken) {
+        handleLogout(false);
+        throw new Error('Authentication required');
+    }
+
+    return fetch(url, {
+        ...options,
+        headers: {
+            ...(options.headers || {}),
+            Authorization: `Bearer ${newToken}`
+        }
+    });
 }
 
     // Expose passkey login handler globally
@@ -976,8 +1107,11 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
     
-    function handleLogout(showToastMessage = true) {
-        // Invalidate every asynchronous operation belonging to the old session
+    async function handleLogout(showToastMessage = true) {
+        // Capture the refresh token before removing it
+        const refreshToken = localStorage.getItem('fuelTrackerRefreshToken');
+
+        // Invalidate the current frontend session immediately
         authSessionId++;
 
         currentUser = null;
@@ -985,10 +1119,30 @@ document.addEventListener('DOMContentLoaded', function() {
         userVehicles = [];
         dashboardLoaded = false;
 
+        // Revoke the refresh token on the server
+        if (refreshToken) {
+            try {
+                await fetch(`${apiBaseUrl}/logout`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        refreshToken
+                    })
+                });
+            } catch (error) {
+                // Server-side revocation failure should not prevent local logout
+                console.error('Refresh token revocation failed:', error);
+            }
+        }
+
+        // Clear local authentication data
         localStorage.removeItem('fuelTrackerUser');
         localStorage.removeItem('fuelTrackerToken');
+        localStorage.removeItem('fuelTrackerRefreshToken');
 
-        // Make sure an old loading overlay cannot block the login screen
+        // Prevent an old loading overlay from blocking the login screen
         hideLoading();
 
         showAuthScreen();
@@ -1513,7 +1667,7 @@ document.addEventListener('DOMContentLoaded', function() {
             showLoading();
             
             // Load user's vehicles
-            const vehiclesResponse = await fetch(`${apiBaseUrl}/getVehicles`, {
+            const vehiclesResponse = await authenticatedFetch(`${apiBaseUrl}/getVehicles`, {
                 headers: {
                     'Authorization': `Bearer ${localStorage.getItem('fuelTrackerToken')}`
                 }
@@ -1706,24 +1860,16 @@ document.addEventListener('DOMContentLoaded', function() {
             setDashboardMode(isElectric);
 
             if (isElectric) {
-                const evResponse = await fetch(
+                const evResponse = await authenticatedFetch(
                     `${apiBaseUrl}/getEvStats?vehicleId=${encodeURIComponent(vehicleId)}`,
                     {
                         headers: {
-                            'Authorization': `Bearer ${token}`,
                             'Content-Type': 'application/json'
                         }
                     }
                 );
 
-                if (evResponse.status === 401) {
-                    showToast('Session expired. Please log in again.', 'error');
-                    localStorage.removeItem('fuelTrackerToken');
-                    localStorage.removeItem('fuelTrackerUser');
-                    handleLogout();
-                    return;
-                }
-
+                
                 if (!evResponse.ok) {
                     let errorMessage = 'Failed to load EV stats';
 
@@ -1814,21 +1960,19 @@ document.addEventListener('DOMContentLoaded', function() {
             // entries, and completed full-tank interval points for the
             // six-month chart. It does not return the complete FuelEntries
             // table.
-            const response = await fetch(
+            const response = await authenticatedFetch(
                 `${apiBaseUrl}/getFuelStats?vehicleId=${encodeURIComponent(vehicleId)}`,
                 {
                     headers: {
-                        'Authorization': `Bearer ${token}`,
                         'Content-Type': 'application/json'
                     }
                 }
             );
 
-            const oilChangeResponsePromise = fetch(
+            const oilChangeResponsePromise = authenticatedFetch(
                 `${apiBaseUrl}/getOilChangeStats?vehicleId=${encodeURIComponent(vehicleId)}`,
                 {
                     headers: {
-                        'Authorization': `Bearer ${token}`,
                         'Content-Type': 'application/json'
                     }
                 }
@@ -1840,14 +1984,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 return null;
             });
 
-            if (response.status === 401) {
-                if (localStorage.getItem('fuelTrackerToken') === token) {
-                    showToast('Session expired. Please log in again.', 'error');
-                    handleLogout();
-                }
-                return;
-            }
-
+            
             if (!response.ok) {
                 let errorMessage = 'Failed to load vehicle stats';
 
@@ -2400,11 +2537,10 @@ document.addEventListener('DOMContentLoaded', function() {
                     return;
                 }
 
-                const response = await fetch(`${apiBaseUrl}/fuelEntries`, {
+                const response = await authenticatedFetch(`${apiBaseUrl}/fuelEntries`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${token}`
                     },
                     body: JSON.stringify({
                         vehicleId,
@@ -2418,14 +2554,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     })
                 });
 
-                if (response.status === 401) {
-                    if (localStorage.getItem('fuelTrackerToken') === token) {
-                        showToast('Session expired. Please log in again.', 'error');
-                        handleLogout();
-                    }
-                    return;
-                }
-
+                
                 if (!response.ok) {
                     const errorText = await response.text();
                     throw new Error(`Failed to add fuel entry: ${errorText}`);
@@ -2481,11 +2610,10 @@ document.addEventListener('DOMContentLoaded', function() {
                 return;
             }
 
-            const response = await fetch(`${apiBaseUrl}/evChargingSessions`, {
+            const response = await authenticatedFetch(`${apiBaseUrl}/evChargingSessions`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
                 },
                 body: JSON.stringify({
                     vehicleId,
@@ -2499,14 +2627,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 })
             });
 
-            if (response.status === 401) {
-                if (localStorage.getItem('fuelTrackerToken') === token) {
-                    showToast('Session expired. Please log in again.', 'error');
-                    handleLogout();
-                }
-                return;
-            }
-
+            
             if (!response.ok) {
                 const errorText = await response.text();
                 throw new Error(`Failed to add charging session: ${errorText}`);
@@ -2620,53 +2741,50 @@ document.addEventListener('DOMContentLoaded', function() {
                         return [];
                     }
 
-                    const fetchForVehicle = async (vehicle) => {
-                        const params = buildDateParams();
+                    // "All Vehicles" uses one API request. The API returns the
+                    // complete user-scoped fuel report and calculates each vehicle
+                    // independently using its VehicleId.
+                    const params = buildDateParams();
 
-                        // Important: request fuel entries vehicle-by-vehicle so the API
-                        // can correctly calculate DistanceKm and IsInitialEntry.
-                        params.append('vehicleId', vehicle.VehicleId);
+                    // Keep vehicleId only for individual vehicle selection.
+                    if (vehicleId) {
+                        params.append('vehicleId', vehicleId);
+                    }
 
-                        const queryString = params.toString();
-                        const url = `${apiBaseUrl}/getFuelEntries?${queryString}`;
+                    const queryString = params.toString();
+                    const url = `${apiBaseUrl}/getFuelEntries?${queryString}`;
 
-                        const response = await fetch(url, {
-                            headers: {
-                                'Authorization': `Bearer ${token}`,
-                                'Content-Type': 'application/json'
-                            }
-                        });
-
-                        if (response.status === 401) {
-                            if (localStorage.getItem('fuelTrackerToken') === token) {
-                                showToast('Session expired. Please log in again.', 'error');
-                                handleLogout();
-                            }
-                            return;
+                    const response = await authenticatedFetch(url, {
+                        headers: {
+                            'Content-Type': 'application/json'
                         }
+                    });
 
-                        if (!response.ok) {
-                            const errorText = await response.text();
-                            throw new Error(`Failed to load fuel report data: ${errorText}`);
-                        }
+                    if (!response.ok) {
+                        const errorText = await response.text();
+                        throw new Error(`Failed to load fuel report data: ${errorText}`);
+                    }
 
-                        const data = await response.json();
+                    const data = await response.json();
 
-                        return Array.isArray(data)
-                            ? data.map(entry => ({
-                                ...entry,
-                                VehicleId: vehicle.VehicleId,
-                                VehicleName: `${vehicle.Make} ${vehicle.Model} (${vehicle.Year})`,
-                                ReportSource: 'fuel'
-                            }))
-                            : [];
-                    };
+                    if (!Array.isArray(data)) {
+                        return [];
+                    }
 
-                    const results = await Promise.all(
-                        fuelVehicles.map(fetchForVehicle)
+                    const vehicleMap = new Map(
+                        fuelVehicles.map(vehicle => [
+                            String(vehicle.VehicleId),
+                            `${vehicle.Make} ${vehicle.Model} (${vehicle.Year})`
+                        ])
                     );
 
-                    return results.flat();
+                    return data
+                        .filter(entry => vehicleMap.has(String(entry.VehicleId)))
+                        .map(entry => ({
+                            ...entry,
+                            VehicleName: vehicleMap.get(String(entry.VehicleId)),
+                            ReportSource: 'fuel'
+                        }));
                 };
 
                 const fetchEvEntriesForVehicle = async (vehicle) => {
@@ -2676,21 +2794,13 @@ document.addEventListener('DOMContentLoaded', function() {
 
                     const queryString = params.toString();
                     const url = queryString ? `${apiBaseUrl}/getEvStats?${queryString}` : `${apiBaseUrl}/getEvStats`;
-                    const response = await fetch(url, {
+                    const response = await authenticatedFetch(url, {
                         headers: {
-                            'Authorization': `Bearer ${token}`,
                             'Content-Type': 'application/json'
                         }
                     });
 
-                if (response.status === 401) {
-                    if (localStorage.getItem('fuelTrackerToken') === token) {
-                        showToast('Session expired. Please log in again.', 'error');
-                        handleLogout();
-                    }
-                    return;
-                }
-
+                
                     if (!response.ok) {
                         const errorText = await response.text();
                         throw new Error(`Failed to load EV report data: ${errorText}`);
@@ -3054,7 +3164,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         `;
                     } else {
                         const liters = Number(entry.Liters) || 0;
-                        const mileage = Number(entry.Mileage);
+                        const mileage = getApiMileage(entry);
 
                         const isInitialEntry =
                             entry.IsInitialEntry === true ||
@@ -3065,7 +3175,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         const efficiency = isInitialEntry
                             ? 'First Fuel Entry'
                             : (
-                                Number.isFinite(mileage) && mileage >= 0
+                                mileage !== null
                                     ? mileage.toFixed(2)
                                     : '--'
                             );
@@ -3145,21 +3255,13 @@ if (endDate) {
                 const queryString = params.toString();
                 const url = queryString ? `${apiBaseUrl}/getEvStats?${queryString}` : `${apiBaseUrl}/getEvStats`;
 
-                const response = await fetch(url, {
+                const response = await authenticatedFetch(url, {
                     headers: {
-                        'Authorization': `Bearer ${token}`,
                         'Content-Type': 'application/json'
                     }
                 });
 
-                if (response.status === 401) {
-                    if (localStorage.getItem('fuelTrackerToken') === token) {
-                        showToast('Session expired. Please log in again.', 'error');
-                        handleLogout();
-                    }
-                    return;
-                }
-
+                
                 if (!response.ok) {
                     const errorText = await response.text();
                     throw new Error(`Failed to load EV sessions: ${errorText}`);
@@ -3411,22 +3513,14 @@ if (endDate) {
             const queryString = params.toString();
             const url = queryString ? `${apiBaseUrl}/getFuelEntries?${queryString}` : `${apiBaseUrl}/getFuelEntries`;
 
-            const response = await fetch(url, {
+            const response = await authenticatedFetch(url, {
                 headers: {
-                    'Authorization': `Bearer ${token}`,
                     'Content-Type': 'application/json'
                 }
             });
             
             // Handle unauthorized response
-            if (response.status === 401) {
-                if (localStorage.getItem('fuelTrackerToken') === token) {
-                    showToast('Session expired. Please log in again.', 'error');
-                    handleLogout();
-                }
-                return;
-            }
-            
+                        
             if (!response.ok) {
                 const errorText = await response.text();
                 throw new Error(`Failed to load fuel entries: ${errorText}`);
@@ -3457,9 +3551,20 @@ if (endDate) {
                     return null;
                 }
 
+                // SQL null/undefined/empty Mileage must remain unavailable.
+                // Number(null) becomes 0, which incorrectly renders as 0 KM/L
+                // in the All Vehicles report.
+                if (
+                    entry.Mileage === null ||
+                    entry.Mileage === undefined ||
+                    entry.Mileage === ''
+                ) {
+                    return null;
+                }
+
                 const mileage = Number(entry.Mileage);
 
-                return Number.isFinite(mileage) && mileage >= 0
+                return Number.isFinite(mileage) && mileage > 0
                     ? mileage
                     : null;
             }
@@ -3547,7 +3652,9 @@ if (endDate) {
             // Generate efficiency data from calculated results
             const efficiencyData = months.map(month => {
                 const data = monthlyData[month];
-                return data.efficiency || 0;
+                // Keep unavailable efficiency as null so Chart.js does not
+                // render it as 0 KM/L.
+                return data.efficiency == null ? null : data.efficiency;
             });
             
             const costData = months.map(month => monthlyData[month].totalCost);
@@ -3806,22 +3913,14 @@ if (endDate) {
                 return;
             }
             
-            const response = await fetch(`${apiBaseUrl}/fuelEntries/${entryId}`, {
+            const response = await authenticatedFetch(`${apiBaseUrl}/fuelEntries/${entryId}`, {
                 method: 'DELETE',
                 headers: {
-                    'Authorization': `Bearer ${token}`
                 }
             });
             
             //  Handle unauthorized
-            if (response.status === 401) {
-                if (localStorage.getItem('fuelTrackerToken') === token) {
-                    showToast('Session expired. Please log in again.', 'error');
-                    handleLogout();
-                }
-                return;
-            }
-            
+                        
             if (!response.ok) {
                 const errorText = await response.text();
                 throw new Error(`Failed to delete fuel entry: ${errorText}`);
@@ -3865,21 +3964,13 @@ if (endDate) {
                 return;
             }
 
-            const response = await fetch(`${apiBaseUrl}/evChargingSessions/${encodeURIComponent(sessionId)}`, {
+            const response = await authenticatedFetch(`${apiBaseUrl}/evChargingSessions/${encodeURIComponent(sessionId)}`, {
                 method: 'DELETE',
                 headers: {
-                    'Authorization': `Bearer ${token}`
                 }
             });
 
-            if (response.status === 401) {
-                if (localStorage.getItem('fuelTrackerToken') === token) {
-                    showToast('Session expired. Please log in again.', 'error');
-                    handleLogout();
-                }
-                return;
-            }
-
+            
             if (!response.ok) {
                 const errorText = await response.text();
                 throw new Error(`Failed to delete charging session: ${errorText}`);
@@ -4352,23 +4443,15 @@ if (endDate) {
                 labors
             };
 
-            const response = await fetch(`${apiBaseUrl}/service-addService`, {
+            const response = await authenticatedFetch(`${apiBaseUrl}/service-addService`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
                 },
                 body: JSON.stringify(serviceData)
             });
 
-            if (response.status === 401) {
-                if (localStorage.getItem('fuelTrackerToken') === token) {
-                    showToast('Session expired. Please log in again.', 'error');
-                    handleLogout();
-                }
-                return;
-            }
-
+            
             if (!response.ok) {
                 const errorText = await response.text();
                 throw new Error(`Failed to save service record: ${errorText}`);
@@ -4486,20 +4569,12 @@ if (endDate) {
 
             const url = `${apiBaseUrl}/service-getServices?${params.toString()}`;
 
-            const response = await fetch(url, {
+            const response = await authenticatedFetch(url, {
                 headers: {
-                    Authorization: `Bearer ${token}`
                 }
             });
 
-            if (response.status === 401) {
-                if (localStorage.getItem('fuelTrackerToken') === token) {
-                    showToast('Session expired. Please log in again.', 'error');
-                    handleLogout();
-                }
-                return;
-            }
-
+            
             if (!response.ok) {
                 const errorText = await response.text();
                 throw new Error(`Failed to load service history: ${errorText}`);
@@ -4817,21 +4892,13 @@ if (serviceTypeFilterToggle && serviceTypeFilter) {
             const params = new URLSearchParams();
             params.append('serviceId', serviceId);
 
-            const response = await fetch(`${apiBaseUrl}/service-getServices?${params.toString()}`, {
+            const response = await authenticatedFetch(`${apiBaseUrl}/service-getServices?${params.toString()}`, {
                 headers: {
-                    'Authorization': `Bearer ${token}`
                 }
             });
 
             //  Proper auth handling
-            if (response.status === 401) {
-                if (localStorage.getItem('fuelTrackerToken') === token) {
-                    showToast('Session expired. Please log in again.', 'error');
-                    handleLogout();
-                }
-                return;
-            }
-
+            
             if (!response.ok) {
                 const errorText = await response.text();
                 throw new Error(`Failed to load service details: ${errorText}`);
@@ -4983,22 +5050,14 @@ if (serviceTypeFilterToggle && serviceTypeFilter) {
                 return;
             }
 
-            const response = await fetch(`${apiBaseUrl}/service-deleteService/${serviceId}`, {
+            const response = await authenticatedFetch(`${apiBaseUrl}/service-deleteService/${serviceId}`, {
                 method: 'DELETE',
                 headers: {
-                    'Authorization': `Bearer ${token}`
                 }
             });
 
             // Auth errors
-            if (response.status === 401) {
-                if (localStorage.getItem('fuelTrackerToken') === token) {
-                    showToast('Session expired. Please log in again.', 'error');
-                    handleLogout();
-                }
-                return;
-            }
-
+            
             // Permission error
             if (response.status === 403) {
                 showToast('You are not allowed to delete this record', 'error');
@@ -5042,22 +5101,14 @@ async function loadUserVehicles() {
             throw new Error('Authentication required');
         }
 
-        const response = await fetch(`${apiBaseUrl}/getVehicles`, {
+        const response = await authenticatedFetch(`${apiBaseUrl}/getVehicles`, {
             method: 'GET',
             headers: {
-                'Authorization': `Bearer ${authToken}`
             }
         });
 
         // Handle auth failure
-        if (response.status === 401) {
-            if (localStorage.getItem('fuelTrackerToken') === token) {
-                showToast('Session expired. Please log in again.', 'error');
-                handleLogout();
-            }
-            return;
-        }
-
+        
         if (response.status === 403) {
             showToast('Access denied', 'error');
             return;
@@ -5189,11 +5240,10 @@ async function handleAddVehicle(e) {
             return;
         }
 
-        const response = await fetch(`${apiBaseUrl}/vehicles`, {
+        const response = await authenticatedFetch(`${apiBaseUrl}/vehicles`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`
             },
             body: JSON.stringify({
                 make,
@@ -5205,14 +5255,7 @@ async function handleAddVehicle(e) {
         });
 
         // Auth handling
-        if (response.status === 401) {
-            if (localStorage.getItem('fuelTrackerToken') === token) {
-                showToast('Session expired. Please log in again.', 'error');
-                handleLogout();
-            }
-            return;
-        }
-
+        
         if (response.status === 403) {
             showToast('Unauthorized action', 'error');
             return;
@@ -5493,21 +5536,13 @@ document.addEventListener('DOMContentLoaded', initVehicleModal);
                 return;
             }
 
-            const response = await fetch(`${apiBaseUrl}/deleteVehicle?vehicleId=${encodeURIComponent(vehicleId)}`, {
+            const response = await authenticatedFetch(`${apiBaseUrl}/deleteVehicle?vehicleId=${encodeURIComponent(vehicleId)}`, {
                 method: 'DELETE',
                 headers: {
-                    'Authorization': `Bearer ${token}`
                 }
             });
 
-            if (response.status === 401) {
-                if (localStorage.getItem('fuelTrackerToken') === token) {
-                    showToast('Session expired. Please log in again.', 'error');
-                    handleLogout();
-                }
-                return;
-            }
-
+            
             if (response.status === 403) {
                 showToast('You are not allowed to delete this vehicle', 'error');
                 return;
@@ -5557,11 +5592,10 @@ document.addEventListener('DOMContentLoaded', initVehicleModal);
                 return;
             }
 
-            const response = await fetch(`${apiBaseUrl}/updateProfile`, {
+            const response = await authenticatedFetch(`${apiBaseUrl}/updateProfile`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
                 },
                 body: JSON.stringify({
                     email,
@@ -5570,14 +5604,7 @@ document.addEventListener('DOMContentLoaded', initVehicleModal);
             });
 
             // Auth handling
-            if (response.status === 401) {
-                if (localStorage.getItem('fuelTrackerToken') === token) {
-                    showToast('Session expired. Please log in again.', 'error');
-                    handleLogout();
-                }
-                return;
-            }
-
+            
             if (response.status === 403) {
                 showToast('Unauthorized action', 'error');
                 return;
@@ -5643,11 +5670,10 @@ document.addEventListener('DOMContentLoaded', initVehicleModal);
                 return;
             }
             
-            const response = await fetch(`${apiBaseUrl}/changePassword`, {
+            const response = await authenticatedFetch(`${apiBaseUrl}/changePassword`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
                 },
                 body: JSON.stringify({
                     userId: userData.userId,
@@ -5657,14 +5683,7 @@ document.addEventListener('DOMContentLoaded', initVehicleModal);
             });
             
             // Handle unauthorized response
-            if (response.status === 401) {
-                if (localStorage.getItem('fuelTrackerToken') === token) {
-                    showToast('Session expired. Please log in again.', 'error');
-                    handleLogout();
-                }
-                return;
-            }
-            
+                        
             if (!response.ok) {
                 const errorText = await response.text();
                 throw new Error(`Failed to change password: ${errorText}`);
