@@ -8,6 +8,7 @@ document.addEventListener('DOMContentLoaded', function() {
     let reportConsumptionChart = null;
     let reportCostChart = null;
     let dashboardLoaded = false; // Track if dashboard has been loaded
+    let authSessionId = 0;
     
     // API configuration
     const apiBaseUrl = 'https://api.sangeeth47.in/api';
@@ -727,6 +728,7 @@ document.addEventListener('DOMContentLoaded', function() {
     
     async function handleLogin(e) {
     e.preventDefault();
+    const loginSessionId = ++authSessionId;
     
     const loginBtn = document.getElementById('login-btn');
     const username = document.getElementById('login-username').value.trim();
@@ -777,6 +779,10 @@ document.addEventListener('DOMContentLoaded', function() {
         // Validate response structure
         if (!data.token || !data.userId) {
             throw new Error('Invalid login response format');
+        }
+        
+        if (loginSessionId !== authSessionId) {
+            return;
         }
 
         // Store auth data
@@ -971,12 +977,22 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     function handleLogout(showToastMessage = true) {
+        // Invalidate every asynchronous operation belonging to the old session
+        authSessionId++;
+
         currentUser = null;
         authToken = null;
-        dashboardLoaded = false; // Reset dashboard loaded flag
+        userVehicles = [];
+        dashboardLoaded = false;
+
         localStorage.removeItem('fuelTrackerUser');
         localStorage.removeItem('fuelTrackerToken');
+
+        // Make sure an old loading overlay cannot block the login screen
+        hideLoading();
+
         showAuthScreen();
+
         if (showToastMessage) {
             showToast('Logged out successfully', 'success');
         }
@@ -984,6 +1000,8 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // UI functions
     function showAuthScreen() {
+    
+    hideLoading();
     
     authScreen.classList.remove('hidden');
     mainScreen.classList.add('hidden');
@@ -1487,7 +1505,9 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Dashboard functions
     async function loadDashboard() {
-        if (!currentUser) return;
+        if (!currentUser || !authToken) return;
+
+        const dashboardSessionId = authSessionId;
         
         try {
             showLoading();
@@ -1498,6 +1518,10 @@ document.addEventListener('DOMContentLoaded', function() {
                     'Authorization': `Bearer ${localStorage.getItem('fuelTrackerToken')}`
                 }
             });
+
+            if (dashboardSessionId !== authSessionId) {
+                return;
+            }
 
             if (!vehiclesResponse.ok) {
                 throw new Error('Failed to load vehicles');
@@ -1817,10 +1841,10 @@ document.addEventListener('DOMContentLoaded', function() {
             });
 
             if (response.status === 401) {
-                showToast('Session expired. Please log in again.', 'error');
-                localStorage.removeItem('fuelTrackerToken');
-                localStorage.removeItem('fuelTrackerUser');
-                handleLogout();
+                if (localStorage.getItem('fuelTrackerToken') === token) {
+                    showToast('Session expired. Please log in again.', 'error');
+                    handleLogout();
+                }
                 return;
             }
 
@@ -2395,10 +2419,10 @@ document.addEventListener('DOMContentLoaded', function() {
                 });
 
                 if (response.status === 401) {
-                    showToast('Session expired. Please log in again.', 'error');
-                    localStorage.removeItem('fuelTrackerToken');
-                    localStorage.removeItem('fuelTrackerUser');
-                    handleLogout();
+                    if (localStorage.getItem('fuelTrackerToken') === token) {
+                        showToast('Session expired. Please log in again.', 'error');
+                        handleLogout();
+                    }
                     return;
                 }
 
@@ -2476,10 +2500,10 @@ document.addEventListener('DOMContentLoaded', function() {
             });
 
             if (response.status === 401) {
-                showToast('Session expired. Please log in again.', 'error');
-                localStorage.removeItem('fuelTrackerToken');
-                localStorage.removeItem('fuelTrackerUser');
-                handleLogout();
+                if (localStorage.getItem('fuelTrackerToken') === token) {
+                    showToast('Session expired. Please log in again.', 'error');
+                    handleLogout();
+                }
                 return;
             }
 
@@ -2614,10 +2638,11 @@ document.addEventListener('DOMContentLoaded', function() {
                         });
 
                         if (response.status === 401) {
-                            showToast('Session expired. Please log in again.', 'error');
-                            localStorage.removeItem('fuelTrackerToken');
-                            handleLogout();
-                            return [];
+                            if (localStorage.getItem('fuelTrackerToken') === token) {
+                                showToast('Session expired. Please log in again.', 'error');
+                                handleLogout();
+                            }
+                            return;
                         }
 
                         if (!response.ok) {
@@ -2658,12 +2683,13 @@ document.addEventListener('DOMContentLoaded', function() {
                         }
                     });
 
-                    if (response.status === 401) {
+                if (response.status === 401) {
+                    if (localStorage.getItem('fuelTrackerToken') === token) {
                         showToast('Session expired. Please log in again.', 'error');
-                        localStorage.removeItem('fuelTrackerToken');
                         handleLogout();
-                        return [];
                     }
+                    return;
+                }
 
                     if (!response.ok) {
                         const errorText = await response.text();
@@ -3127,9 +3153,10 @@ if (endDate) {
                 });
 
                 if (response.status === 401) {
-                    showToast('Session expired. Please log in again.', 'error');
-                    localStorage.removeItem('fuelTrackerToken');
-                    handleLogout();
+                    if (localStorage.getItem('fuelTrackerToken') === token) {
+                        showToast('Session expired. Please log in again.', 'error');
+                        handleLogout();
+                    }
                     return;
                 }
 
@@ -3393,9 +3420,10 @@ if (endDate) {
             
             // Handle unauthorized response
             if (response.status === 401) {
-                showToast('Session expired. Please log in again.', 'error');
-                localStorage.removeItem('fuelTrackerToken');
-                handleLogout();
+                if (localStorage.getItem('fuelTrackerToken') === token) {
+                    showToast('Session expired. Please log in again.', 'error');
+                    handleLogout();
+                }
                 return;
             }
             
@@ -3787,9 +3815,10 @@ if (endDate) {
             
             //  Handle unauthorized
             if (response.status === 401) {
-                showToast('Session expired. Please log in again.', 'error');
-                localStorage.removeItem('fuelTrackerToken');
-                handleLogout();
+                if (localStorage.getItem('fuelTrackerToken') === token) {
+                    showToast('Session expired. Please log in again.', 'error');
+                    handleLogout();
+                }
                 return;
             }
             
@@ -3844,9 +3873,10 @@ if (endDate) {
             });
 
             if (response.status === 401) {
-                showToast('Session expired. Please log in again.', 'error');
-                localStorage.removeItem('fuelTrackerToken');
-                handleLogout();
+                if (localStorage.getItem('fuelTrackerToken') === token) {
+                    showToast('Session expired. Please log in again.', 'error');
+                    handleLogout();
+                }
                 return;
             }
 
@@ -4332,8 +4362,10 @@ if (endDate) {
             });
 
             if (response.status === 401) {
-                showToast('Session expired. Please log in again.', 'error');
-                handleLogout();
+                if (localStorage.getItem('fuelTrackerToken') === token) {
+                    showToast('Session expired. Please log in again.', 'error');
+                    handleLogout();
+                }
                 return;
             }
 
@@ -4461,10 +4493,10 @@ if (endDate) {
             });
 
             if (response.status === 401) {
-                showToast('Session expired. Please log in again.', 'error');
-                localStorage.removeItem('fuelTrackerToken');
-                localStorage.removeItem('fuelTrackerUser');
-                handleLogout();
+                if (localStorage.getItem('fuelTrackerToken') === token) {
+                    showToast('Session expired. Please log in again.', 'error');
+                    handleLogout();
+                }
                 return;
             }
 
@@ -4793,10 +4825,10 @@ if (serviceTypeFilterToggle && serviceTypeFilter) {
 
             //  Proper auth handling
             if (response.status === 401) {
-                showToast('Session expired. Please log in again.', 'error');
-                localStorage.removeItem('fuelTrackerToken');
-                localStorage.removeItem('fuelTrackerUser');
-                handleLogout();
+                if (localStorage.getItem('fuelTrackerToken') === token) {
+                    showToast('Session expired. Please log in again.', 'error');
+                    handleLogout();
+                }
                 return;
             }
 
@@ -4960,8 +4992,10 @@ if (serviceTypeFilterToggle && serviceTypeFilter) {
 
             // Auth errors
             if (response.status === 401) {
-                showToast('Session expired. Please log in again.', 'error');
-                handleLogout();
+                if (localStorage.getItem('fuelTrackerToken') === token) {
+                    showToast('Session expired. Please log in again.', 'error');
+                    handleLogout();
+                }
                 return;
             }
 
@@ -5017,9 +5051,10 @@ async function loadUserVehicles() {
 
         // Handle auth failure
         if (response.status === 401) {
-            localStorage.removeItem('fuelTrackerToken');
-            localStorage.removeItem('fuelTrackerUser');
-            window.location.href = '/login';
+            if (localStorage.getItem('fuelTrackerToken') === token) {
+                showToast('Session expired. Please log in again.', 'error');
+                handleLogout();
+            }
             return;
         }
 
@@ -5171,10 +5206,10 @@ async function handleAddVehicle(e) {
 
         // Auth handling
         if (response.status === 401) {
-            localStorage.removeItem('fuelTrackerToken');
-            localStorage.removeItem('fuelTrackerUser');
-            showToast('Session expired. Please log in again.', 'error');
-            handleLogout();
+            if (localStorage.getItem('fuelTrackerToken') === token) {
+                showToast('Session expired. Please log in again.', 'error');
+                handleLogout();
+            }
             return;
         }
 
@@ -5465,12 +5500,11 @@ document.addEventListener('DOMContentLoaded', initVehicleModal);
                 }
             });
 
-            // ✅ Auth handling
             if (response.status === 401) {
-                showToast('Session expired. Please log in again.', 'error');
-                localStorage.removeItem('fuelTrackerToken');
-                localStorage.removeItem('fuelTrackerUser');
-                handleLogout();
+                if (localStorage.getItem('fuelTrackerToken') === token) {
+                    showToast('Session expired. Please log in again.', 'error');
+                    handleLogout();
+                }
                 return;
             }
 
@@ -5537,10 +5571,10 @@ document.addEventListener('DOMContentLoaded', initVehicleModal);
 
             // Auth handling
             if (response.status === 401) {
-                showToast('Session expired. Please log in again.', 'error');
-                localStorage.removeItem('fuelTrackerToken');
-                localStorage.removeItem('fuelTrackerUser');
-                handleLogout();
+                if (localStorage.getItem('fuelTrackerToken') === token) {
+                    showToast('Session expired. Please log in again.', 'error');
+                    handleLogout();
+                }
                 return;
             }
 
@@ -5624,10 +5658,10 @@ document.addEventListener('DOMContentLoaded', initVehicleModal);
             
             // Handle unauthorized response
             if (response.status === 401) {
-                showToast('Session expired. Please log in again.', 'error');
-                localStorage.removeItem('fuelTrackerToken');
-                localStorage.removeItem('fuelTrackerUser');
-                handleLogout();
+                if (localStorage.getItem('fuelTrackerToken') === token) {
+                    showToast('Session expired. Please log in again.', 'error');
+                    handleLogout();
+                }
                 return;
             }
             
