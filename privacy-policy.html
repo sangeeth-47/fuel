@@ -1,0 +1,877 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="FuelNFix Privacy Policy">
+<link rel="apple-touch-icon" sizes="180x180" href="assets/favicon_pp/apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="32x32" href="assets/favicon_pp/favicon-32x32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="assets/favicon_pp/favicon-16x16.png">
+<link rel="icon" type="image/png" sizes="192x192" href="assets/favicon_pp/android-chrome-192x192.png">
+<link rel="icon" type="image/png" sizes="512x512" href="assets/favicon_pp/android-chrome-512x512.png">
+<link rel="shortcut icon" href="assets/favicon_pp/favicon.ico">
+<link rel="manifest" href="assets/favicon_pp/site.webmanifest">
+<title>FuelNFix — Privacy Policy</title>
+<style>
+:root{
+  --bg:#030817;
+  --bg2:#061126;
+  --panel:#08152b;
+  --panel2:#0a1931;
+  --panel3:#0d203e;
+  --line:rgba(102,156,255,.18);
+  --line2:rgba(145,105,255,.22);
+  --text:#e9efff;
+  --muted:#a8b8d7;
+  --muted2:#7f92b5;
+  --blue:#4da3ff;
+  --cyan:#58d8ff;
+  --purple:#a56cff;
+  --purple2:#d17cff;
+  --shadow:0 24px 70px rgba(0,0,0,.42);
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth;background:var(--bg)}
+body{
+  margin:0;
+  color:var(--text);
+  font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;
+  line-height:1.65;
+  background:
+    radial-gradient(900px 600px at 82% 7%,rgba(55,105,255,.14),transparent 65%),
+    radial-gradient(800px 700px at 12% 78%,rgba(116,56,255,.10),transparent 65%),
+    linear-gradient(145deg,#020615 0%,#061128 48%,#030817 100%);
+  min-height:100vh;
+}
+body:before,body:after{
+  content:"";
+  position:fixed;
+  pointer-events:none;
+  z-index:-1;
+}
+body:before{
+  inset:0;
+  opacity:.20;
+  background-image:
+    linear-gradient(rgba(120,160,230,.035) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(120,160,230,.035) 1px,transparent 1px);
+  background-size:44px 44px;
+  mask-image:linear-gradient(to bottom,black 0%,transparent 85%);
+}
+body:after{
+  width:620px;height:620px;
+  right:-240px;bottom:-260px;
+  border-radius:50%;
+  background:radial-gradient(circle,rgba(104,69,255,.13),transparent 68%);
+  filter:blur(15px);
+}
+a{color:inherit}
+.topbar{
+  position:sticky;
+  top:0;
+  z-index:50;
+  height:76px;
+  border-bottom:1px solid rgba(104,151,240,.16);
+  background:rgba(3,8,23,.76);
+  backdrop-filter:blur(22px);
+  -webkit-backdrop-filter:blur(22px);
+}
+.topbar-inner{
+  width:min(1280px,calc(100% - 48px));
+  height:100%;
+  margin:auto;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+}
+.brand{
+  display:flex;
+  align-items:center;
+  gap:12px;
+  text-decoration:none;
+  font-size:1.25rem;
+  font-weight:800;
+  letter-spacing:-.035em;
+}
+.brand-logo{
+  width:45px;height:45px;
+  object-fit:contain;
+  border-radius:12px;
+  filter:drop-shadow(0 0 11px rgba(75,155,255,.28));
+}
+.brand-text span:nth-child(1){color:#f1f5ff}
+.brand-text span:nth-child(2){color:var(--blue)}
+.brand-text span:nth-child(3){color:var(--purple2)}
+.nav{
+  display:flex;
+  align-items:center;
+  gap:30px;
+  color:#b4c2dc;
+  font-size:.9rem;
+}
+.nav a{text-decoration:none}
+.nav a:hover{color:#fff}
+.nav .active{
+  color:#d8c5ff;
+  position:relative;
+}
+.nav .active:after{
+  content:"";
+  position:absolute;
+  left:0;right:0;bottom:-27px;
+  height:2px;
+  background:linear-gradient(90deg,var(--blue),var(--purple));
+  box-shadow:0 0 12px rgba(130,102,255,.7);
+}
+.hero-wrap{
+  width:min(1280px,calc(100% - 48px));
+  margin:22px auto 20px;
+}
+.hero{
+  position:relative;
+  min-height:270px;
+  overflow:hidden;
+  border:1px solid rgba(113,99,255,.42);
+  border-radius:16px;
+  background:
+    radial-gradient(circle at 86% 50%,rgba(42,126,255,.17),transparent 34%),
+    radial-gradient(circle at 55% 110%,rgba(128,65,255,.17),transparent 42%),
+    linear-gradient(120deg,#07183a,#06112b 52%,#071a39);
+  box-shadow:var(--shadow),inset 0 1px rgba(255,255,255,.04);
+}
+.hero:before{
+  content:"";
+  position:absolute;
+  width:900px;height:500px;
+  left:-220px;top:-260px;
+  border:1px solid rgba(91,109,255,.24);
+  border-radius:50%;
+  transform:rotate(-10deg);
+}
+.hero:after{
+  content:"";
+  position:absolute;
+  width:820px;height:420px;
+  right:-350px;bottom:-280px;
+  border:1px solid rgba(79,151,255,.28);
+  border-radius:50%;
+  transform:rotate(-13deg);
+}
+.hero-content{
+  position:relative;
+  z-index:2;
+  min-height:270px;
+  display:grid;
+  grid-template-columns:250px 1fr 285px;
+  align-items:center;
+  gap:24px;
+  padding:34px 42px;
+}
+.hero-logo{
+  width:210px;height:210px;
+  object-fit:contain;
+  filter:drop-shadow(0 0 22px rgba(78,151,255,.42));
+}
+.eyebrow{
+  color:#73a9ff;
+  font-size:.78rem;
+  font-weight:750;
+  letter-spacing:.15em;
+  text-transform:uppercase;
+  margin-bottom:8px;
+}
+h1{
+  margin:0;
+  font-size:clamp(2.8rem,5vw,4.6rem);
+  line-height:.98;
+  letter-spacing:-.06em;
+}
+.gradient-text{
+  background:linear-gradient(100deg,#eef4ff 0%,#8abfff 42%,#bd7dff 76%,#e68bff 100%);
+  -webkit-background-clip:text;
+  background-clip:text;
+  color:transparent;
+}
+.hero-sub{
+  margin:15px 0 0;
+  color:#aebddd;
+  max-width:610px;
+  font-size:1rem;
+}
+.hero-meta{
+  justify-self:end;
+  width:100%;
+  padding:19px 20px;
+  border:1px solid rgba(116,151,225,.15);
+  border-radius:20px;
+  background:rgba(2,10,28,.27);
+}
+.meta-row{
+  display:grid;
+  grid-template-columns:110px 1fr;
+  gap:12px;
+  padding:8px 0;
+  font-size:.82rem;
+}
+.meta-label{color:#7e91b4}
+.meta-value{color:#dce6f8}
+.layout{
+  width:min(1280px,calc(100% - 48px));
+  margin:0 auto 80px;
+  display:grid;
+  grid-template-columns:225px minmax(0,1fr);
+  gap:18px;
+  align-items:start;
+}
+.sidebar{
+  position:sticky;
+  top:96px;
+}
+.toc{
+  border:1px solid rgba(101,146,230,.14);
+  border-radius:15px;
+  padding:16px 12px;
+  background:linear-gradient(180deg,rgba(8,22,45,.9),rgba(5,15,32,.9));
+  box-shadow:0 18px 50px rgba(0,0,0,.25);
+}
+.toc-title{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  color:#b9d8ff;
+  font-weight:750;
+  font-size:.9rem;
+  padding:4px 9px 12px;
+}
+.toc-title-icon{
+  width:27px;height:27px;
+  display:grid;place-items:center;
+  border-radius:8px;
+  background:rgba(71,149,255,.12);
+  color:#68b4ff;
+}
+.toc a{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  min-height:39px;
+  padding:6px 9px;
+  border-radius:10px;
+  color:#a9b9d4;
+  text-decoration:none;
+  font-size:.79rem;
+  transition:.2s ease;
+}
+.toc a:hover{
+  background:rgba(73,133,255,.09);
+  color:#edf4ff;
+  transform:translateX(2px);
+}
+.toc-num{
+  width:26px;height:26px;
+  flex:0 0 26px;
+  display:grid;place-items:center;
+  border-radius:8px;
+  color:#b7c9e8;
+  background:linear-gradient(145deg,#162b4c,#0d1d37);
+  border:1px solid rgba(116,157,226,.15);
+  font-size:.7rem;
+}.toc a.active{
+  background:linear-gradient(90deg,rgba(83,124,255,.18),rgba(92,76,255,.06));
+  color:#eef3ff;
+  box-shadow:inset 3px 0 var(--purple);
+}
+.toc a.active .toc-num{
+  color:#fff;
+  background:linear-gradient(135deg,#6e75ff,#ad6eff);
+}
+.side-card{
+  margin-top:18px;
+  padding:20px 15px;
+  min-height:180px;
+  border:1px solid rgba(105,104,255,.35);
+  border-radius:15px;
+  overflow:hidden;
+  position:relative;
+  background:
+    radial-gradient(circle at 50% 0%,rgba(71,132,255,.14),transparent 58%),
+    linear-gradient(160deg,#081a39,#071025);
+  text-align:center;
+}
+.side-card img{
+  width:92px;height:92px;
+  object-fit:contain;
+  filter:drop-shadow(0 0 15px rgba(83,143,255,.4));
+}
+.side-card h3{margin:4px 0 2px;font-size:1.05rem}
+.side-card p{margin:0;color:#8fa4c8;font-size:.76rem}
+.content{min-width:0}
+.policy-card{
+  border:1px solid rgba(100,146,230,.14);
+  border-radius:15px;
+  background:linear-gradient(145deg,rgba(9,24,48,.93),rgba(5,16,33,.96));
+  box-shadow:0 18px 55px rgba(0,0,0,.24);
+  padding:28px 32px;
+  margin-bottom:18px;
+}
+.policy-card.intro{
+  padding:25px 32px;
+}
+.card-heading{
+  display:flex;
+  align-items:center;
+  gap:13px;
+  margin-bottom:14px;
+}
+.card-icon{
+  width:45px;height:45px;
+  display:grid;place-items:center;
+  border-radius:11px;
+  color:#83baff;
+  border:1px solid rgba(92,154,255,.20);
+  background:linear-gradient(145deg,rgba(77,154,255,.17),rgba(128,78,255,.08));
+  font-size:1.2rem;
+  flex:0 0 45px;
+}
+h2{
+  margin:0;
+  font-size:1.35rem;
+  letter-spacing:-.025em;
+}
+.section-num{
+  color:#91bfff;
+  font-size:.78rem;
+  margin-right:8px;
+  font-weight:800;
+}
+h3{
+  color:#58b7ff;
+  margin:23px 0 7px;
+  font-size:1rem;
+  letter-spacing:-.01em;
+}
+p{color:#b5c3db;margin:0 0 13px;font-size:.88rem}
+ul{
+  margin:7px 0 16px;
+  padding-left:22px;
+  color:#b5c3db;
+  font-size:.87rem;
+}
+li{margin:4px 0}
+li::marker{color:#9a70ff}
+strong{color:#e8effd}
+code{
+  color:#c5dfff;
+  background:rgba(77,143,255,.09);
+  border:1px solid rgba(89,147,238,.13);
+  border-radius:5px;
+  padding:2px 5px;
+}
+hr{
+  border:0;
+  border-top:1px solid rgba(99,143,222,.12);
+  margin:23px 0 0;
+}
+.notice{
+  border:1px solid rgba(139,103,255,.26);
+  border-radius:12px;
+  padding:18px 20px;
+  margin-top:22px;
+  background:linear-gradient(120deg,rgba(77,104,255,.09),rgba(158,80,255,.07));
+}
+.notice strong{display:block;color:#bfa1ff;margin-bottom:5px}
+.contact-email{
+  display:inline-block;
+  color:#78bfff;
+  text-decoration:none;
+  border-bottom:1px dashed rgba(120,191,255,.4);
+}
+footer{
+  width:min(1280px,calc(100% - 48px));
+  margin:0 auto;
+  padding:0 0 38px;
+  display:flex;
+  justify-content:space-between;
+  gap:20px;
+  color:#687b9d;
+  font-size:.75rem;
+}
+.reveal{
+  animation:rise .7s cubic-bezier(.2,.75,.2,1) both;
+}
+@keyframes rise{
+  from{opacity:0;transform:translateY(16px)}
+  to{opacity:1;transform:none}
+}
+@media(max-width:980px){
+  .hero-content{grid-template-columns:170px 1fr;padding:28px}
+  .hero-logo{width:150px;height:150px}
+  .hero-meta{grid-column:2;justify-self:start}
+  .layout{grid-template-columns:190px minmax(0,1fr)}
+  .nav{gap:15px}
+}
+@media(max-width:760px){
+  .topbar{height:64px}
+  .topbar-inner,.hero-wrap,.layout,footer{width:calc(100% - 24px)}
+  .nav{display:none}
+  .hero{min-height:0}
+  .hero-content{
+    grid-template-columns:1fr;
+    text-align:center;
+    padding:28px 20px;
+  }
+  .hero-logo{width:125px;height:125px;margin:auto}
+  .hero-meta{grid-column:auto;max-width:390px;margin:auto;text-align:left}
+  .layout{grid-template-columns:1fr}
+  .sidebar{position:static}
+  .toc{display:none}
+  .side-card{display:none}
+  .policy-card,.policy-card.intro{padding:22px 19px}
+  .hero-sub{margin-left:auto;margin-right:auto}
+  footer{
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    text-align:center;
+  }
+}
+@media(prefers-reduced-motion:reduce){
+  html{scroll-behavior:auto}
+  .reveal{animation:none}
+  *{transition:none!important}
+}
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="topbar-inner">
+    <a class="brand" href="https://fuel.sangeeth47.in/" aria-label="FuelNFix">
+      <img class="brand-logo" src="AndroidLogoT.png" alt="FuelNFix logo">
+      <div class="brand-text"><span>Fuel</span><span>N</span><span>Fix</span></div>
+    </a>
+    <nav class="nav">
+      <a href="https://fuel.sangeeth47.in/">Home</a>
+      <a class="active" href="#top">Privacy Policy</a>
+      <a href="mailto:fuelnfix@sangeeth47.in">Contact</a>
+    </nav>
+  </div>
+</header>
+
+<div id="top"></div>
+
+<section class="hero-wrap reveal">
+  <div class="hero">
+    <div class="hero-content">
+      <img class="hero-logo" src="AndroidLogoT.png" alt="FuelNFix">
+      <div>
+        <div class="eyebrow">Privacy &amp; Data Protection</div>
+        <h1><span class="gradient-text">FuelNFix</span><br>Privacy Policy</h1>
+        <p class="hero-sub">
+          How FuelNFix collects, uses, stores, protects, and manages information
+          when you use the Android application and associated web services.
+        </p>
+      </div>
+      <div class="hero-meta">
+        <div class="meta-row"><span class="meta-label">Effective Date</span><span class="meta-value">04 October 2026</span></div>
+        <div class="meta-row"><span class="meta-label">Application</span><span class="meta-value">FuelNFix</span></div>
+        <div class="meta-row"><span class="meta-label">Package Name</span><span class="meta-value"><code>com.fuelfix.app</code></span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="layout">
+  <aside class="sidebar">
+    <nav class="toc" aria-label="On this page">
+      <div class="toc-title"><span class="toc-title-icon">▤</span> On This Page</div>
+      <a href="#s1"><span class="toc-num">1</span>Information We Collect</a>
+      <a href="#s2"><span class="toc-num">2</span>How We Use Information</a>
+      <a href="#s3"><span class="toc-num">3</span>Android App Security</a>
+      <a href="#s4"><span class="toc-num">4</span>Google Play</a>
+      <a href="#s5"><span class="toc-num">5</span>Data Storage &amp; Security</a>
+      <a href="#s6"><span class="toc-num">6</span>Data Retention</a>
+      <a href="#s7"><span class="toc-num">7</span>Local-Only Data</a>
+      <a href="#s8"><span class="toc-num">8</span>Cloud Availability</a>
+      <a href="#s9"><span class="toc-num">9</span>Account Deletion</a>
+      <a href="#s10"><span class="toc-num">10</span>Data Sharing</a>
+      <a href="#s11"><span class="toc-num">11</span>Children's Privacy</a>
+      <a href="#s12"><span class="toc-num">12</span>Cookies &amp; Web Services</a>
+      <a href="#s13"><span class="toc-num">13</span>Your Responsibilities</a>
+      <a href="#s14"><span class="toc-num">14</span>Policy Changes</a>
+      <a href="#s15"><span class="toc-num">15</span>Contact</a>
+    </nav>
+
+    <div class="side-card">
+      <img src="AndroidLogoT.png" alt="FuelNFix logo">
+      <h3>FuelNFix</h3>
+      <p>Track. Maintain. Drive Better.</p>
+    </div>
+  </aside>
+
+  <main class="content">
+
+    <article class="policy-card intro reveal">
+      <div class="card-heading">
+        <div class="card-icon">◇</div>
+        <h2>Introduction</h2>
+      </div>
+      <p>
+        This Privacy Policy explains how FuelNFix ("FuelNFix", "we", "us", or "our")
+        collects, uses, stores, and protects information when you use the FuelNFix
+        Android application and associated web services.
+      </p>
+      <p>By using FuelNFix, you acknowledge the practices described in this Privacy Policy.</p>
+    </article>
+
+    <article class="policy-card reveal" id="s1">
+      <div class="card-heading">
+        <div class="card-icon">1</div>
+        <h2>Information We Collect</h2>
+      </div>
+      <p>Depending on how you use FuelNFix, we may process the following information.</p>
+
+      <h3>1.1 &nbsp;Account Information</h3>
+      <p>If you create or use a FuelNFix account, we may collect and process:</p>
+      <ul>
+        <li>Username or email/identifier used for authentication</li>
+        <li>Account credentials in securely processed form</li>
+        <li>User account identifier</li>
+        <li>Authentication and session information</li>
+        <li>Profile information that you voluntarily provide</li>
+      </ul>
+      <p>Passwords are intended to be processed securely and are not stored as readable plaintext passwords.</p>
+      <hr>
+
+      <h3>1.2 &nbsp;Vehicle and Fuel Information</h3>
+      <p>If you use FuelNFix's vehicle-management and fuel-tracking features, information may include:</p>
+      <ul>
+        <li>Vehicle details</li>
+        <li>Fuel entries</li>
+        <li>Fuel quantity</li>
+        <li>Fuel cost</li>
+        <li>Fuel price</li>
+        <li>Odometer readings</li>
+        <li>Dates and times</li>
+        <li>Fuel-efficiency calculations</li>
+        <li>Service and maintenance records</li>
+        <li>Oil-change information</li>
+        <li>EV charging-session information</li>
+        <li>Reports and statistics generated from your records</li>
+      </ul>
+      <p>The exact information stored depends on the features you use.</p>
+      <hr>
+
+      <h3>1.3 &nbsp;Cloud-Synchronized Data</h3>
+      <p>FuelNFix may provide cloud storage and synchronization for supported application data.</p>
+      <p>
+        When cloud functionality is enabled, information you submit through supported
+        features may be transmitted to and stored on FuelNFix's backend infrastructure
+        so that it can be accessed across supported devices or through supported services.
+      </p>
+      <p>Cloud functionality is not necessarily permanent. As described in Section 8, we reserve the right to discontinue, restrict, modify, or migrate cloud functionality.</p>
+      <hr>
+
+      <h3>1.4 &nbsp;Purchase and Entitlement Information</h3>
+      <p>For Android purchases made through Google Play, FuelNFix's backend may process information required to verify and maintain your entitlement, including:</p>
+      <ul>
+        <li>Google Play product identifier</li>
+        <li>Google Play purchase token</li>
+        <li>Google Play order identifier, where available</li>
+        <li>Purchase state</li>
+        <li>Purchase/verification timestamps</li>
+        <li>Purchase acknowledgement state</li>
+        <li>Entitlement and revocation status</li>
+      </ul>
+      <p>The purchase token is used for server-side verification of the purchase with Google Play and for associating the purchased FuelNFix entitlement with your FuelNFix account.</p>
+      <p>FuelNFix does not receive or store your Google account password.</p>
+    </article>
+
+    <article class="policy-card reveal" id="s2">
+      <div class="card-heading"><div class="card-icon">2</div><h2>How We Use Information</h2></div>
+      <p>Information processed by FuelNFix may be used to:</p>
+      <ul>
+        <li>Provide account authentication and account-management functionality</li>
+        <li>Store and synchronize your application data</li>
+        <li>Display your vehicles, fuel records, service records, charging records, and reports</li>
+        <li>Calculate fuel-efficiency and other statistics</li>
+        <li>Provide application functionality across supported devices</li>
+        <li>Verify Google Play purchases</li>
+        <li>Grant, maintain, or revoke paid entitlements</li>
+        <li>Prevent unauthorized use of paid functionality</li>
+        <li>Detect and prevent fraudulent purchase-token reuse</li>
+        <li>Maintain application security</li>
+        <li>Diagnose technical problems and service failures</li>
+        <li>Maintain and improve the reliability of the service</li>
+      </ul>
+      <p>We do not use your vehicle or fuel records for purposes unrelated to operating and maintaining FuelNFix unless otherwise disclosed.</p>
+    </article>
+
+    <article class="policy-card reveal" id="s3">
+      <div class="card-heading"><div class="card-icon">3</div><h2>Android Application Integrity and Security</h2></div>
+      <p>FuelNFix may use Google Play Integrity and related security mechanisms to verify that authentication requests originate from an authorized Android application environment.</p>
+      <p>This may involve processing security-related information provided by Google Play services, including application and device integrity verdicts.</p>
+      <p>These mechanisms are used for security and entitlement protection. They are not intended to identify you personally beyond what is necessary to provide and secure the service.</p>
+    </article>
+
+    <article class="policy-card reveal" id="s4">
+      <div class="card-heading"><div class="card-icon">4</div><h2>Google Play</h2></div>
+      <p>Android purchases are processed through Google Play.</p>
+      <p>FuelNFix may communicate with Google Play's developer services to verify purchases, acknowledge eligible purchases, and determine whether an entitlement remains active.</p>
+      <p>Google Play independently processes payment information according to Google's applicable terms and privacy policies. FuelNFix does not directly process or store your complete payment-card information.</p>
+      <p>For information about Google's handling of your information, refer to Google's applicable privacy documentation.</p>
+    </article>
+
+    <article class="policy-card reveal" id="s5">
+      <div class="card-heading"><div class="card-icon">5</div><h2>Data Storage and Security</h2></div>
+      <p>FuelNFix may use third-party infrastructure providers, cloud infrastructure, databases, authentication services, and application-hosting services to operate its backend.</p>
+      <p>We take reasonable technical and organizational measures to protect information against unauthorized access, alteration, disclosure, or destruction.</p>
+      <p>Security measures may include:</p>
+      <ul>
+        <li>Encrypted communications where supported</li>
+        <li>Server-side authentication</li>
+        <li>Signed authentication tokens</li>
+        <li>Access controls</li>
+        <li>Parameterized database queries</li>
+        <li>Purchase-token ownership validation</li>
+        <li>Server-side Google Play purchase verification</li>
+        <li>Server-side entitlement enforcement</li>
+        <li>Application integrity verification</li>
+        <li>Security logging and monitoring</li>
+      </ul>
+      <p>However, no Internet-connected system can be guaranteed to be completely secure.</p>
+    </article>
+
+    <article class="policy-card reveal" id="s6">
+      <div class="card-heading"><div class="card-icon">6</div><h2>Data Retention</h2></div>
+      <p>We retain account and cloud-stored information for as long as reasonably necessary to provide the relevant services, maintain security, comply with applicable obligations, or resolve disputes.</p>
+      <p>Retention periods may vary depending on the type of information and the operational requirements of the service.</p>
+      <p>If cloud functionality is discontinued, we may retain or delete cloud-stored information according to the applicable service-transition or data-deletion process described in Section 8.</p>
+    </article>
+
+    <article class="policy-card reveal" id="s7">
+      <div class="card-heading"><div class="card-icon">7</div><h2>Local-Only Data</h2></div>
+      <p>FuelNFix may support local-only storage and operation.</p>
+      <p>When using local-only functionality, application data may remain on your device rather than being synchronized to FuelNFix's cloud infrastructure.</p>
+      <p>Local data is subject to the security of your device, operating system, device backups, and any other services you use with your device.</p>
+      <p>Uninstalling the application, clearing application data, losing the device, or resetting the device may result in loss of locally stored information if no backup exists.</p>
+    </article>
+
+    <article class="policy-card reveal" id="s8">
+      <div class="card-heading"><div class="card-icon">8</div><h2>Cloud Service Availability and Possible Discontinuation</h2></div>
+      <p>FuelNFix's cloud functionality is provided subject to the availability and continued operation of the underlying infrastructure.</p>
+      <p><strong>Cloud storage and synchronization are not guaranteed to remain available indefinitely.</strong></p>
+      <p>We may, where reasonably necessary, discontinue, suspend, restrict, modify, migrate, or replace cloud functionality due to circumstances including:</p>
+      <ul>
+        <li>Infrastructure availability or failure</li>
+        <li>Hosting or operational constraints</li>
+        <li>Security requirements</li>
+        <li>Maintenance requirements</li>
+        <li>Changes in third-party services</li>
+        <li>Changes in applicable laws or regulations</li>
+        <li>Economic or financial constraints</li>
+        <li>Inability to sustainably operate the cloud infrastructure</li>
+        <li>Changes to the FuelNFix product or service architecture</li>
+      </ul>
+      <p>If cloud services are discontinued, FuelNFix may transition the application toward <strong>local-only data storage and operation</strong>.</p>
+      <p>Where reasonably practicable, we may provide users with notice of significant changes and may provide an opportunity to export or otherwise retrieve available cloud-stored information before permanent deletion. However, <strong>we cannot guarantee that data export or recovery will always be possible</strong>, particularly in cases involving infrastructure failure, security incidents, legal requirements, or circumstances beyond our reasonable control.</p>
+      <p>Users should maintain their own appropriate backups of important information and should not rely exclusively on FuelNFix's cloud infrastructure as their sole copy of important records.</p>
+      <p>A change from cloud-supported operation to local-only operation may also affect synchronization and access to previously cloud-stored information.</p>
+    </article>
+
+    <article class="policy-card reveal" id="s9">
+      <div class="card-heading"><div class="card-icon">9</div><h2>Account Deletion and Data Deletion</h2></div>
+      <p>You may request deletion of your FuelNFix account and associated personal information, subject to information that we may be required or permitted to retain for legitimate operational, security, legal, or financial purposes.</p>
+      <p>Deleting an account may result in deletion of associated cloud-stored application data.</p>
+      <p>Local data stored on your device may not automatically be deleted when a server-side account is deleted. You may need to remove local application data separately.</p>
+      <p>Google Play purchase records may also be subject to Google's own retention requirements and cannot necessarily be deleted by FuelNFix.</p>
+    </article>
+
+    <article class="policy-card reveal" id="s10">
+      <div class="card-heading"><div class="card-icon">10</div><h2>Data Sharing</h2></div>
+      <p>FuelNFix does not intend to sell your personal information.</p>
+      <p>Information may be processed or disclosed where reasonably necessary to:</p>
+      <ul>
+        <li>Operate FuelNFix infrastructure</li>
+        <li>Provide authentication and cloud services</li>
+        <li>Verify Google Play purchases</li>
+        <li>Maintain application security</li>
+        <li>Diagnose service problems</li>
+        <li>Comply with legal obligations</li>
+        <li>Protect the rights, property, or safety of FuelNFix, users, or others</li>
+        <li>Respond to lawful requests from authorities</li>
+      </ul>
+      <p>Third-party service providers may process information on behalf of FuelNFix when required to provide infrastructure or other operational services.</p>
+    </article>
+
+    <article class="policy-card reveal" id="s11">
+      <div class="card-heading"><div class="card-icon">11</div><h2>Children's Privacy</h2></div>
+      <p>FuelNFix is not specifically directed toward children.</p>
+      <p>We do not knowingly seek to collect personal information from children in violation of applicable law.</p>
+      <p>If you believe that a child has provided personal information to FuelNFix in circumstances where such collection is not permitted, please contact us so that appropriate action can be considered.</p>
+    </article>
+
+    <article class="policy-card reveal" id="s12">
+      <div class="card-heading"><div class="card-icon">12</div><h2>Cookies and Web Services</h2></div>
+      <p>The FuelNFix web application may use technically necessary cookies, browser storage, authentication mechanisms, or similar technologies required to maintain sessions and provide functionality.</p>
+      <p>These mechanisms may be used for authentication, security, preferences, and service operation.</p>
+      <p>FuelNFix does not use cookies for purposes beyond those necessary or otherwise disclosed.</p>
+    </article>
+
+    <article class="policy-card reveal" id="s13">
+      <div class="card-heading"><div class="card-icon">13</div><h2>Your Responsibilities</h2></div>
+      <p>You are responsible for:</p>
+      <ul>
+        <li>Maintaining the security of your account credentials</li>
+        <li>Keeping your devices reasonably secure</li>
+        <li>Maintaining backups of important local or cloud data where appropriate</li>
+        <li>Providing accurate account information</li>
+        <li>Not sharing authentication credentials</li>
+        <li>Not attempting to circumvent application or entitlement security mechanisms</li>
+      </ul>
+    </article>
+
+    <article class="policy-card reveal" id="s14">
+      <div class="card-heading"><div class="card-icon">14</div><h2>Changes to This Privacy Policy</h2></div>
+      <p>This Privacy Policy may be updated periodically to reflect changes in FuelNFix, applicable requirements, infrastructure, or data-processing practices.</p>
+      <p>When material changes are made, the updated policy may be published through the FuelNFix application, website, or another appropriate communication channel.</p>
+      <p>The "Effective Date" at the beginning of this policy indicates when the current version became effective.</p>
+    </article>
+
+    <article class="policy-card reveal" id="s15">
+      <div class="card-heading"><div class="card-icon">15</div><h2>Contact</h2></div>
+      <p>For privacy-related questions, data-deletion requests, or questions regarding the handling of your information, contact FuelNFix using the contact details below.</p>
+      <p><strong>FuelNFix</strong></p>
+      <p>Privacy contact:
+        <a class="contact-email" href="mailto:fuelnfix@sangeeth47.in">fuelnfix@sangeeth47.in</a>
+      </p>
+      <p>Production Web Application:
+        <a class="contact-email" href="https://fuel.sangeeth47.in/">https://fuel.sangeeth47.in/</a>
+      </p>
+
+      <div class="notice">
+        <strong>Important Notice</strong>
+        <p>
+          FuelNFix provides cloud functionality as an operational service, not as a guaranteed permanent archival or backup service.
+          Users should retain independent backups of information that is important to them, particularly because cloud services may be
+          modified, suspended, migrated, or discontinued in the future.
+        </p>
+      </div>
+    </article>
+
+  </main>
+</div>
+
+<footer>
+  <span>© 2026 FuelNFix</span>
+  <span>Privacy Policy · Effective October 4, 2026</span>
+</footer>
+
+
+<script>
+(() => {
+  const links = [...document.querySelectorAll('.toc a[href^="#s"]')];
+  const sections = links
+    .map(link => document.querySelector(link.getAttribute('href')))
+    .filter(Boolean);
+
+  if (!links.length || !sections.length) return;
+
+  const linkById = new Map(
+    links.map(link => [link.getAttribute('href').slice(1), link])
+  );
+
+  let activeId = sections[0].id;
+
+  function setActive(id) {
+    if (!linkById.has(id) || id === activeId) return;
+
+    activeId = id;
+    links.forEach(link => {
+      const isActive = link.getAttribute('href') === `#${id}`;
+      link.classList.toggle('active', isActive);
+      if (isActive) {
+        link.setAttribute('aria-current', 'location');
+      } else {
+        link.removeAttribute('aria-current');
+      }
+    });
+  }
+
+  /*
+   * Pick the section whose top is closest to the reading line near the
+   * upper third of the viewport. This makes the sidebar follow the content
+   * currently being read rather than simply highlighting the last section
+   * whose top has crossed the viewport.
+   */
+  function updateFromScroll() {
+    const scrollBottom = window.scrollY + window.innerHeight;
+    const documentBottom = document.documentElement.scrollHeight;
+
+    // When the user reaches the bottom of the page, the final section
+    // should always become active even if its heading cannot reach the
+    // normal reading-line position.
+    if (scrollBottom >= documentBottom - 8) {
+      setActive(sections[sections.length - 1].id);
+      return;
+    }
+
+    const readingLine = window.scrollY + window.innerHeight * 0.30;
+    let current = sections[0];
+
+    for (const section of sections) {
+      if (section.offsetTop <= readingLine) {
+        current = section;
+      } else {
+        break;
+      }
+    }
+
+    setActive(current.id);
+  }
+
+  // Keep the active item correct while scrolling.
+  let ticking = false;
+  window.addEventListener('scroll', () => {
+    if (!ticking) {
+      window.requestAnimationFrame(() => {
+        updateFromScroll();
+        ticking = false;
+      });
+      ticking = true;
+    }
+  }, { passive: true });
+
+  // Also update after resize because section positions can change.
+  window.addEventListener('resize', updateFromScroll, { passive: true });
+
+  // Smoothly scroll to a section while accounting for the sticky header.
+  links.forEach(link => {
+    link.addEventListener('click', event => {
+      const target = document.querySelector(link.getAttribute('href'));
+      if (!target) return;
+
+      event.preventDefault();
+
+      const headerOffset = 92;
+      const y = target.getBoundingClientRect().top + window.scrollY - headerOffset;
+
+      window.scrollTo({
+        top: Math.max(0, y),
+        behavior: 'smooth'
+      });
+
+      history.replaceState(null, '', link.getAttribute('href'));
+      setActive(target.id);
+    });
+  });
+
+  // Initial state.
+  links[0].classList.add('active');
+  links[0].setAttribute('aria-current', 'location');
+  updateFromScroll();
+})();
+</script>
+
+</body>
+</html>
